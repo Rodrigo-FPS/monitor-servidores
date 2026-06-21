@@ -1,0 +1,25 @@
+[Unit]
+Description=Demonio de heartbeat Monitor de Servidores
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=monitor-agent
+Group=monitor-agent
+ExecStart=/usr/bin/python3 /opt/monitor-agent/latidos.py
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+
+NoNewPrivileges=true
+ProtectSystem=strict
+PrivateTmp=true
+ProtectHome=true
+MemoryDenyWriteExecute=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target
