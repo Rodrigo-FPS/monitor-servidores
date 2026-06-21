@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\AdminAuth;
+use App\Http\Middleware\VerificarSesionEstricta; //Middleware de verificar sesiones en ../Middleware/VerificarSesionEstricta.php
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->append(SecurityHeaders::class); //aplica headers de seguridad en todas las respuestas
+        $middleware->appendToGroup('web', [
+            VerificarSesionEstricta::class,
+        ]);
         $middleware->alias([
             'admin.auth' => AdminAuth::class,
         ]);
