@@ -13,3 +13,9 @@ Route::post('/logout',[LoginController::class, 'cerrar'])->middleware('admin.aut
 Route::middleware('admin.auth')->group(function () {
     Route::get('/admin', [MonitorController::class, 'index']);
 });
+
+// Ruta para la página de monitorización de servidores
+// Solo accesible para usuarios autenticados (administradores)
+Route::get('/monitor', [App\Http\Controllers\MonitorController::class, 'index'])->name('monitor.index')->middleware('auth');
+
+Route::get('/monitor/data', [MonitorController::class, 'getData'])->name('monitor.data')->middleware('auth');
