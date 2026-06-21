@@ -10,7 +10,7 @@ Route::post('/heartbeat', [HeartbeatController::class, 'recibir']);
 Route::post('/shutdown',  [ShutdownController::class, 'recibir']);
 
 //gestion de servidores registrados protegida por sesion admin
-Route::middleware('admin.auth')->group(function () {
+Route::middleware('admin.auth')->prefix('admin')->group(function () {
     Route::get('/servidores',               [ServidorController::class, 'index']);
     Route::post('/servidores',              [ServidorController::class, 'store']);
     Route::patch('/servidores/{server_id}', [ServidorController::class, 'update']);
