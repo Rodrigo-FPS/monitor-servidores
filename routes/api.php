@@ -1,15 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\HeartbeatController;
-use App\Http\Controllers\ShutdownController;
 use App\Http\Controllers\ServidorController;
 
-//latidos autenticados con HMAC-SHA256 en los controllers
-Route::post('/heartbeat', [HeartbeatController::class, 'recibir']);
-Route::post('/shutdown',  [ShutdownController::class, 'recibir']);
-
-//gestion de servidores registrados protegida por sesion admin
+//gestion de servidores — protegida por sesion admin
+//los endpoints /api/heartbeat y /api/shutdown los maneja FastAPI directamente via Nginx
 Route::middleware('admin.auth')->prefix('admin')->group(function () {
     Route::get('/servidores',               [ServidorController::class, 'index']);
     Route::post('/servidores',              [ServidorController::class, 'store']);

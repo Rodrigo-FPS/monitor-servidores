@@ -2,4 +2,4 @@
 
 use Illuminate\Support\Facades\Schedule;
 
-Schedule::command('monitor:actualizar-estados')->everyThirtySeconds(); //evalua estado de cada servidor segun su ultimo latido
+//el job de actualizacion de estados corre en FastAPI no en Laravel
