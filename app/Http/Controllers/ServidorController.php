@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Servidor;
+use App\Services\ApiClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -10,6 +10,13 @@ class ServidorController extends Controller
 {
     private const RE_SERVER_ID = '/^[a-zA-Z0-9_-]{1,64}$/';
     private const RE_HOSTNAME  = '/^[a-zA-Z0-9._-]{1,255}$/';
+
+    private ApiClient $api;
+
+    public function __construct(ApiClient $api)
+    {
+        $this->api = $api;
+    }
 
     // ── validadores de campo ──────────────────────────────────────────────────
 
@@ -28,72 +35,17 @@ class ServidorController extends Controller
         return filter_var($v, FILTER_VALIDATE_IP) !== false; //acepta IPv4 e IPv6
     }
 
-    // ── logica de negocio sin dependencia de HTTP ─────────────────────────────
-
-    private function listar(): array
-    {
-        return Servidor::orderBy('hostname')
-            ->get()
-            ->map(fn($s) => [
-                'server_id'     => $s->server_id,
-                'hostname'      => $s->hostname,
-                'ip'            => $s->ip_registrada,
-                'estado'        => $s->estado,
-                'ultimo_visto'  => $s->ultimo_visto?->toIso8601String(),
-                'registrado_en' => $s->registrado_en->toIso8601String(),
-            ])
-            ->all();
-    }
-
-    private function registrar(string $serverId, string $hostname, string $ip): array
-    {
-        if (Servidor::where('server_id', $serverId)->exists()) {
-            return ['ok' => false, 'codigo' => 409, 'error' => 'el server_id ya existe'];
-        }
-
-        $secreto = bin2hex(random_bytes(32)); //64 hex chars criptograficamente seguros para HMAC-SHA256
-
-        Servidor::create([
-            'server_id'     => $serverId,
-            'hostname'      => $hostname,
-            'ip_registrada' => $ip,
-            'secreto'       => $secreto,
-            'estado'        => 'indeterminado',
-            'registrado_en' => now(),
-        ]);
-
-        return ['ok' => true, 'server_id' => $serverId, 'secreto' => $secreto];
-    }
-
-    private function actualizarIp(string $serverId, string $nuevaIp): array
-    {
-        $servidor = Servidor::find($serverId);
-        if ($servidor === null) {
-            return ['ok' => false, 'codigo' => 404, 'error' => 'servidor no encontrado'];
-        }
-
-        $servidor->ip_registrada = $nuevaIp;
-        $servidor->save();
-
-        return ['ok' => true];
-    }
-
-    private function eliminar(string $serverId): array
-    {
-        $servidor = Servidor::find($serverId);
-        if ($servidor === null) {
-            return ['ok' => false, 'codigo' => 404, 'error' => 'servidor no encontrado'];
-        }
-
-        $servidor->delete();
-        return ['ok' => true];
-    }
-
     // ── endpoints HTTP ────────────────────────────────────────────────────────
 
     public function index(): JsonResponse
     {
-        return response()->json($this->listar());
+        try {
+            $resultado = $this->api->listarServidores();
+        } catch (\Exception) {
+            return response()->json(['error' => 'no se pudo conectar con la API'], 503);
+        }
+
+        return response()->json($resultado['body'], $resultado['status']);
     }
 
     public function store(Request $request): JsonResponse
@@ -120,30 +72,20 @@ class ServidorController extends Controller
         if (!$this->esServerIdValido($serverId)) {
             return response()->json(['error' => 'server_id invalido solo alfanumericos guion y guion bajo'], 422);
         }
-
         if (!$this->esHostnameValido($hostname)) {
             return response()->json(['error' => 'hostname invalido'], 422);
         }
-
         if (!$this->esIpValida($ip)) {
             return response()->json(['error' => 'ip invalida debe ser IPv4 o IPv6 valida'], 422);
         }
 
         try {
-            $resultado = $this->registrar($serverId, $hostname, $ip);
+            $resultado = $this->api->registrarServidor($serverId, $hostname, $ip);
         } catch (\Exception) {
-            return response()->json(['error' => 'error interno al registrar servidor'], 500);
+            return response()->json(['error' => 'no se pudo conectar con la API'], 503);
         }
 
-        if (!$resultado['ok']) {
-            return response()->json(['error' => $resultado['error']], $resultado['codigo']);
-        }
-
-        return response()->json([
-            'server_id' => $resultado['server_id'],
-            'secreto'   => $resultado['secreto'], //unica vez que se devuelve el secreto
-            'aviso'     => 'copia el secreto ahora no se puede recuperar despues',
-        ], 201);
+        return response()->json($resultado['body'], $resultado['status']);
     }
 
     public function update(Request $request, string $serverId): JsonResponse
@@ -159,26 +101,20 @@ class ServidorController extends Controller
         if ($ip === '') {
             return response()->json(['error' => 'se requiere el campo ip'], 400);
         }
-
         if (strlen($ip) > 45) {
             return response()->json(['error' => 'ip demasiado larga'], 422);
         }
-
         if (!$this->esIpValida($ip)) {
             return response()->json(['error' => 'ip invalida'], 422);
         }
 
         try {
-            $resultado = $this->actualizarIp($serverId, $ip);
+            $resultado = $this->api->actualizarServidor($serverId, $ip);
         } catch (\Exception) {
-            return response()->json(['error' => 'error interno al actualizar servidor'], 500);
+            return response()->json(['error' => 'no se pudo conectar con la API'], 503);
         }
 
-        if (!$resultado['ok']) {
-            return response()->json(['error' => $resultado['error']], $resultado['codigo']);
-        }
-
-        return response()->json(['ok' => true]);
+        return response()->json($resultado['body'], $resultado['status']);
     }
 
     public function destroy(string $serverId): JsonResponse
@@ -190,15 +126,11 @@ class ServidorController extends Controller
         }
 
         try {
-            $resultado = $this->eliminar($serverId);
+            $resultado = $this->api->eliminarServidor($serverId);
         } catch (\Exception) {
-            return response()->json(['error' => 'error interno al eliminar servidor'], 500);
+            return response()->json(['error' => 'no se pudo conectar con la API'], 503);
         }
 
-        if (!$resultado['ok']) {
-            return response()->json(['error' => $resultado['error']], $resultado['codigo']);
-        }
-
-        return response()->json(['ok' => true]);
+        return response()->json($resultado['body'], $resultado['status']);
     }
 }
