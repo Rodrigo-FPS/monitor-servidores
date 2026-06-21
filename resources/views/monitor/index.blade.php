@@ -27,5 +27,10 @@
 @endsection
 
 @push('scripts')
+<script>
+    // Variables globales para JavaScript (toma los valores del .env)
+    window.fastapiUrl = '{{ env('FASTAPI_URL') }}';
+    window.fastapiKey = '{{ env('FASTAPI_KEY') }}';
+</script>
 <script src="{{ asset('js/monitor.js') }}"></script>
 @endpush
