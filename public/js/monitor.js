@@ -158,10 +158,25 @@ $(document).ready(function() {
         });
     });
 
-    // ── Limpiar modal agregar al cerrar ───────────────────────────────────────
+    // ── Copiar secreto al portapapeles ────────────────────────────────────────
+    $(document).on('click', '#btn-copiar-secreto', function() {
+        navigator.clipboard.writeText($('#agregar-secreto-valor').val()).then(function() {
+            $('#btn-copiar-secreto')
+                .html('<i class="fas fa-check"></i>')
+                .removeClass('btn-outline-secondary').addClass('btn-success');
+        });
+    });
+
+    // ── Resetear modal agregar al cerrar ──────────────────────────────────────
     $('#modal-agregar').on('hidden.bs.modal', function() {
         $('#agregar-server-id, #agregar-hostname, #agregar-ip').val('');
         $('#agregar-error').addClass('d-none').text('');
+        $('#agregar-form').removeClass('d-none');
+        $('#agregar-secreto-box').addClass('d-none');
+        $('#agregar-secreto-valor').val('');
+        $('#btn-copiar-secreto').html('<i class="fas fa-copy"></i>').removeClass('btn-success').addClass('btn-outline-secondary');
+        $('#btn-confirmar-agregar').removeClass('d-none').prop('disabled', false).html('<i class="fas fa-plus me-1"></i>Agregar');
+        $('#agregar-btn-cancelar').text('Cancelar');
     });
 
     // ── Confirmar agregar ─────────────────────────────────────────────────────
@@ -181,13 +196,21 @@ $(document).ready(function() {
             contentType: 'application/json',
             data: JSON.stringify({ server_id: id, hostname: hostname, ip: ip }),
             timeout: 5000,
-            success:  function()    { modalInstance('modal-agregar').hide(); actualizarTabla(); },
-            error:    function(xhr) {
+            success: function(data) {
+                $('#agregar-form').addClass('d-none');
+                $('#agregar-error').addClass('d-none');
+                $('#agregar-secreto-valor').val(data.secreto || '');
+                $('#agregar-secreto-box').removeClass('d-none');
+                $('#btn-confirmar-agregar').addClass('d-none');
+                $('#agregar-btn-cancelar').text('Cerrar');
+                actualizarTabla();
+            },
+            error: function(xhr) {
                 var msg = 'Error al agregar el servidor.';
                 try { msg = JSON.parse(xhr.responseText).error || msg; } catch(e) {}
                 $('#agregar-error').removeClass('d-none').text(msg);
-            },
-            complete: function() { btn.prop('disabled', false).html('<i class="fas fa-plus me-1"></i>Agregar'); }
+                btn.prop('disabled', false).html('<i class="fas fa-plus me-1"></i>Agregar');
+            }
         });
     });
 });
