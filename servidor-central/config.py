@@ -1,23 +1,31 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-#desarrollo usa SQLite sin configurar DATABASE_URL en .env
-#produccion usa PostgreSQL configurado en .env
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     f"sqlite+aiosqlite:///{_BASE_DIR}/monitor.db",
 )
 
-#genera una clave con: python3 -c "import secrets; print(secrets.token_urlsafe(64))"
-ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "")
+def _leer_credencial(nombre: str) -> str:
+    """Lee un secreto desde $CREDENTIALS_DIRECTORY (systemd LoadCredential).
+    Si el directorio no esta disponible, devuelve cadena vacia."""
+    cred_dir = os.environ.get("CREDENTIALS_DIRECTORY", "")
+    if cred_dir:
+        ruta = Path(cred_dir) / nombre
+        if ruta.exists():
+            return ruta.read_text().strip()
+    return ""
+
+ADMIN_API_KEY = _leer_credencial("admin_api_key") or os.getenv("ADMIN_API_KEY", "")
 if not ADMIN_API_KEY:
     raise RuntimeError(
-        "ADMIN_API_KEY no esta configurada en .env\n"
-        "genera una con: python3 -c \"import secrets; print(secrets.token_urlsafe(64))\""
+        "ADMIN_API_KEY no configurada — usa systemd LoadCredential "
+        "o define la variable en .env"
     )
 
 HEARTBEAT_INTERVALO_SEGUNDOS = int(os.getenv("HEARTBEAT_INTERVALO_SEGUNDOS", "30"))
