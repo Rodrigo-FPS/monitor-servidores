@@ -50,15 +50,15 @@ class ServidorController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $serverId = trim((string) $request->input('server_id', ''));
-        $hostname = trim((string) $request->input('hostname', ''));
-        $ip       = trim((string) $request->input('ip', ''));
+        $serverId   = trim((string) $request->input('server_id', ''));
+        $hostname   = trim((string) $request->input('hostname', ''));
+        $ip         = trim((string) $request->input('ip', ''));
+        $clavePub   = trim((string) $request->input('clave_publica', ''));
 
-        if ($serverId === '' || $hostname === '' || $ip === '') {
-            return response()->json(['error' => 'se requieren server_id hostname ip'], 400);
+        if ($serverId === '' || $hostname === '' || $ip === '' || $clavePub === '') {
+            return response()->json(['error' => 'se requieren server_id hostname ip clave_publica'], 400);
         }
 
-        //verificar longitud antes del regex para prevenir ReDoS
         if (strlen($serverId) > 64) {
             return response()->json(['error' => 'server_id demasiado largo maximo 64 chars'], 422);
         }
@@ -67,6 +67,9 @@ class ServidorController extends Controller
         }
         if (strlen($ip) > 45) {
             return response()->json(['error' => 'ip demasiado larga'], 422);
+        }
+        if (strlen($clavePub) > 800 || !str_starts_with($clavePub, '-----BEGIN PUBLIC KEY-----')) {
+            return response()->json(['error' => 'clave_publica debe ser un PEM Ed25519 valido'], 422);
         }
 
         if (!$this->esServerIdValido($serverId)) {
@@ -80,7 +83,7 @@ class ServidorController extends Controller
         }
 
         try {
-            $resultado = $this->api->registrarServidor($serverId, $hostname, $ip);
+            $resultado = $this->api->registrarServidor($serverId, $hostname, $ip, $clavePub);
         } catch (\Exception) {
             return response()->json(['error' => 'no se pudo conectar con la API'], 503);
         }

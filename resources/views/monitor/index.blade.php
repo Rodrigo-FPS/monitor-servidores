@@ -53,47 +53,34 @@
             <div class="modal-body">
                 <div id="agregar-error" class="alert alert-danger d-none"></div>
 
-                <div id="agregar-form">
-                    <div class="mb-3">
-                        <label for="agregar-server-id" class="form-label fw-semibold">ID del Servidor</label>
-                        <input type="text" class="form-control" id="agregar-server-id"
-                               placeholder="ej: servidor-web-01" maxlength="64">
-                        <div class="form-text">Solo letras, números, guión y guión bajo.</div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="agregar-hostname" class="form-label fw-semibold">Hostname</label>
-                        <input type="text" class="form-control" id="agregar-hostname"
-                               placeholder="ej: debian-web-01" maxlength="255">
-                    </div>
-                    <div class="mb-3">
-                        <label for="agregar-ip" class="form-label fw-semibold">Dirección IP</label>
-                        <input type="text" class="form-control" id="agregar-ip"
-                               placeholder="ej: 192.168.10.20" maxlength="45">
-                    </div>
+                <div class="mb-3">
+                    <label for="agregar-server-id" class="form-label fw-semibold">ID del Servidor</label>
+                    <input type="text" class="form-control" id="agregar-server-id"
+                           placeholder="ej: servidor-web-01" maxlength="64">
+                    <div class="form-text">Solo letras, números, guión y guión bajo.</div>
                 </div>
-
-                <div id="agregar-secreto-box" class="d-none">
-                    <div class="alert alert-success mb-3">
-                        <i class="fas fa-check-circle me-2"></i><strong>Servidor registrado correctamente.</strong>
-                    </div>
-                    <p class="fw-semibold mb-1">Secreto HMAC para el agente cliente:</p>
-                    <div class="input-group mb-3">
-                        <input type="text" class="form-control font-monospace small"
-                               id="agregar-secreto-valor" readonly>
-                        <button class="btn btn-outline-secondary" type="button" id="btn-copiar-secreto"
-                                title="Copiar secreto">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
-                    <div class="alert alert-warning py-2 mb-0">
-                        <i class="fas fa-exclamation-triangle me-1"></i>
-                        Copia este secreto ahora — <strong>no se puede recuperar después.</strong>
+                <div class="mb-3">
+                    <label for="agregar-hostname" class="form-label fw-semibold">Hostname</label>
+                    <input type="text" class="form-control" id="agregar-hostname"
+                           placeholder="ej: debian-web-01" maxlength="255">
+                </div>
+                <div class="mb-3">
+                    <label for="agregar-ip" class="form-label fw-semibold">Dirección IP</label>
+                    <input type="text" class="form-control" id="agregar-ip"
+                           placeholder="ej: 192.168.10.20" maxlength="45">
+                </div>
+                <div class="mb-3">
+                    <label for="agregar-clave-publica" class="form-label fw-semibold">Clave Pública Ed25519</label>
+                    <textarea class="form-control font-monospace small" id="agregar-clave-publica"
+                              rows="4" placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----" maxlength="800"></textarea>
+                    <div class="form-text">
+                        Arranca el agente una vez en el cliente para generarla, luego copia
+                        el contenido de <code>/etc/monitor-agent/public.key</code>.
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" id="agregar-btn-cancelar"
-                        data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" id="btn-confirmar-agregar">
                     <i class="fas fa-plus me-1"></i>Agregar
                 </button>

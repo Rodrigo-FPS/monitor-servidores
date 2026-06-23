@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from db.database import obtener_sesion
 from db.models import Servidor
-from auth.hmac_validator import validar_hmac, validar_timestamp
+from auth.hmac_validator import validar_firma_ed25519, validar_timestamp
 
 router = APIRouter()
 
@@ -22,7 +22,7 @@ def _extraer_headers(request: Request):
 
 def _extraer_firma(autorizacion: str):
     partes = autorizacion.split(" ", 1)
-    if len(partes) != 2 or partes[0] != "HMAC":
+    if len(partes) != 2 or partes[0] != "Ed25519":
         return None
     return partes[1].strip()
 
@@ -34,8 +34,7 @@ async def _buscar_servidor(server_id: str, sesion: AsyncSession):
     return resultado.scalar_one_or_none()
 
 
-async def validar_peticion_hmac(request: Request, sesion: AsyncSession):
-    #valida en orden: headers presentes IP registrada timestamp HMAC
+async def validar_peticion_ed25519(request: Request, sesion: AsyncSession):
     server_id, timestamp_iso, autorizacion = _extraer_headers(request)
 
     if not server_id or not timestamp_iso or not autorizacion:
@@ -45,25 +44,28 @@ async def validar_peticion_hmac(request: Request, sesion: AsyncSession):
     if firma is None:
         return None, False
 
-    #limite de longitud para prevenir ataques de buffer
-    if len(server_id) > 64 or len(timestamp_iso) > 35 or len(firma) > 128:
+    #Ed25519: firma base64 de 64 bytes = 88 chars; server_id max 64; timestamp max 35
+    if len(server_id) > 64 or len(timestamp_iso) > 35 or len(firma) > 100:
         return None, False
 
     servidor = await _buscar_servidor(server_id, sesion)
     if servidor is None:
         return None, False
 
-    if request.client.host != servidor.ip_registrada: #solo acepta de la IP registrada
+    if request.client.host != servidor.ip_registrada:
         return None, False
 
     if not validar_timestamp(timestamp_iso):
         return None, False
 
-    secreto_bytes = servidor.secreto.encode("utf-8")
-    if not validar_hmac(secreto_bytes, server_id, timestamp_iso, firma):
+    if not validar_firma_ed25519(servidor.clave_publica, server_id, timestamp_iso, firma):
         return None, False
 
     return servidor, True
+
+
+# alias para shutdown.py que importa este nombre
+validar_peticion_hmac = validar_peticion_ed25519
 
 
 async def registrar_latido(servidor: Servidor, sesion: AsyncSession):
@@ -79,7 +81,7 @@ async def recibir_heartbeat(
     request: Request,
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
-    servidor, valido = await validar_peticion_hmac(request, sesion)
+    servidor, valido = await validar_peticion_ed25519(request, sesion)
 
     if valido:
         await registrar_latido(servidor, sesion)

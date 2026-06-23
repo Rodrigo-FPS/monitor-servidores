@@ -26,12 +26,13 @@ class ApiClient
         return ['status' => $r->status(), 'body' => $r->json() ?? []];
     }
 
-    public function registrarServidor(string $serverId, string $hostname, string $ip): array
+    public function registrarServidor(string $serverId, string $hostname, string $ip, string $clavePublica): array
     {
         $r = $this->http()->post("{$this->baseUrl}/api/admin/servidores", [
-            'server_id' => $serverId,
-            'hostname'  => $hostname,
-            'ip'        => $ip,
+            'server_id'    => $serverId,
+            'hostname'     => $hostname,
+            'ip'           => $ip,
+            'clave_publica' => $clavePublica,
         ]);
         return ['status' => $r->status(), 'body' => $r->json() ?? []];
     }

@@ -1,5 +1,4 @@
 import re
-import secrets
 import ipaddress
 
 from fastapi import APIRouter, Request, Depends
@@ -37,21 +36,20 @@ async def obtener_servidor(server_id: str, sesion: AsyncSession):
     return resultado.scalar_one_or_none()
 
 
-async def agregar_servidor(server_id: str, hostname: str, ip: str, sesion: AsyncSession) -> dict:
+async def agregar_servidor(server_id: str, hostname: str, ip: str, clave_publica: str, sesion: AsyncSession) -> dict:
     if await obtener_servidor(server_id, sesion) is not None:
         return {"ok": False, "error": "El server_id ya existe"}
 
-    secreto = secrets.token_hex(32) #secreto HMAC de 64 hex chars generado aleatoriamente
     nuevo = Servidor(
         server_id=server_id,
         hostname=hostname,
         ip_registrada=ip,
-        secreto=secreto,
+        clave_publica=clave_publica,
         estado="indeterminado",
     )
     sesion.add(nuevo)
     await sesion.commit()
-    return {"ok": True, "server_id": server_id, "secreto": secreto} #el secreto se devuelve solo aqui
+    return {"ok": True, "server_id": server_id}
 
 
 async def actualizar_servidor(server_id: str, nueva_ip: str, sesion: AsyncSession) -> dict:
@@ -103,12 +101,13 @@ async def ruta_agregar(
     except Exception:
         return JSONResponse({"error": "body JSON invalido"}, status_code=400)
 
-    server_id = str(datos.get("server_id", "")).strip()
-    hostname  = str(datos.get("hostname", "")).strip()
-    ip        = str(datos.get("ip", "")).strip()
+    server_id    = str(datos.get("server_id", "")).strip()
+    hostname     = str(datos.get("hostname", "")).strip()
+    ip           = str(datos.get("ip", "")).strip()
+    clave_publica = str(datos.get("clave_publica", "")).strip()
 
-    if not server_id or not hostname or not ip:
-        return JSONResponse({"error": "se requieren server_id hostname ip"}, status_code=400)
+    if not server_id or not hostname or not ip or not clave_publica:
+        return JSONResponse({"error": "se requieren server_id hostname ip clave_publica"}, status_code=400)
 
     if not _PATRON_SERVER_ID.match(server_id):
         return JSONResponse({"error": "server_id invalido solo alfanumericos guion y guion bajo"}, status_code=422)
@@ -119,19 +118,15 @@ async def ruta_agregar(
     if not _es_ip_valida(ip):
         return JSONResponse({"error": "IP invalida debe ser IPv4 o IPv6 valida"}, status_code=422)
 
-    resultado = await agregar_servidor(server_id, hostname, ip, sesion)
+    if len(clave_publica) > 800 or not clave_publica.startswith("-----BEGIN PUBLIC KEY-----"):
+        return JSONResponse({"error": "clave_publica debe ser un PEM Ed25519 valido"}, status_code=422)
+
+    resultado = await agregar_servidor(server_id, hostname, ip, clave_publica, sesion)
 
     if not resultado["ok"]:
         return JSONResponse({"error": resultado["error"]}, status_code=409)
 
-    return JSONResponse(
-        {
-            "server_id": resultado["server_id"],
-            "secreto":   resultado["secreto"],
-            "aviso":     "copia el secreto ahora no se puede recuperar despues",
-        },
-        status_code=201,
-    )
+    return JSONResponse({"server_id": resultado["server_id"]}, status_code=201)
 
 
 @router.patch("/api/admin/servidores/{server_id}")

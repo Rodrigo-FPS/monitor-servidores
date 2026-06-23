@@ -21,9 +21,9 @@ else
     echo "[OK] usuario monitor-agent creado"
 fi
 
-echo "[...] instalando httpx..."
-pip3 install httpx -q --break-system-packages 2>/dev/null || pip3 install httpx -q
-echo "[OK] httpx listo"
+echo "[...] instalando dependencias Python..."
+pip3 install httpx cryptography -q --break-system-packages 2>/dev/null || pip3 install httpx cryptography -q
+echo "[OK] dependencias listas"
 
 mkdir -p /opt/monitor-agent
 cp "$DIR/latidos.py" /opt/monitor-agent/latidos.py
@@ -32,6 +32,9 @@ chown root:monitor-agent /opt/monitor-agent/latidos.py
 echo "[OK] latidos.py copiado a /opt/monitor-agent/"
 
 mkdir -p /etc/monitor-agent
+chown root:monitor-agent /etc/monitor-agent
+chmod 750 /etc/monitor-agent
+
 if [ -f /etc/monitor-agent/config.env ]; then
     echo "[INFO] /etc/monitor-agent/config.env ya existe no se sobreescribe"
 else
@@ -51,8 +54,16 @@ echo ""
 echo "edita la configuracion con los datos de este servidor:"
 echo "  sudo nano /etc/monitor-agent/config.env"
 echo ""
-echo "cuando termines arranca e habilita el servicio:"
+echo "arranca el servicio una vez para generar las claves Ed25519:"
 echo "  sudo systemctl start monitor-agent"
+echo ""
+echo "copia la clave publica que se imprime en el log:"
+echo "  sudo journalctl -u monitor-agent -n 20"
+echo ""
+echo "registra el servidor en el panel web pegando esa clave publica"
+echo "o leela directamente: sudo cat /etc/monitor-agent/public.key"
+echo ""
+echo "habilita el servicio para que arranque con el sistema:"
 echo "  sudo systemctl enable monitor-agent"
 echo ""
 echo "verifica que funciona:"

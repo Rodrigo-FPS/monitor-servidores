@@ -158,34 +158,27 @@ $(document).ready(function() {
         });
     });
 
-    // ── Copiar secreto al portapapeles ────────────────────────────────────────
-    $(document).on('click', '#btn-copiar-secreto', function() {
-        navigator.clipboard.writeText($('#agregar-secreto-valor').val()).then(function() {
-            $('#btn-copiar-secreto')
-                .html('<i class="fas fa-check"></i>')
-                .removeClass('btn-outline-secondary').addClass('btn-success');
-        });
-    });
-
-    // ── Resetear modal agregar al cerrar ──────────────────────────────────────
+    // ── Limpiar modal agregar al cerrar ───────────────────────────────────────
     $('#modal-agregar').on('hidden.bs.modal', function() {
         $('#agregar-server-id, #agregar-hostname, #agregar-ip').val('');
+        $('#agregar-clave-publica').val('');
         $('#agregar-error').addClass('d-none').text('');
-        $('#agregar-form').removeClass('d-none');
-        $('#agregar-secreto-box').addClass('d-none');
-        $('#agregar-secreto-valor').val('');
-        $('#btn-copiar-secreto').html('<i class="fas fa-copy"></i>').removeClass('btn-success').addClass('btn-outline-secondary');
-        $('#btn-confirmar-agregar').removeClass('d-none').prop('disabled', false).html('<i class="fas fa-plus me-1"></i>Agregar');
-        $('#agregar-btn-cancelar').text('Cancelar');
+        $('#btn-confirmar-agregar').prop('disabled', false).html('<i class="fas fa-plus me-1"></i>Agregar');
     });
 
     // ── Confirmar agregar ─────────────────────────────────────────────────────
     $('#btn-confirmar-agregar').on('click', function() {
-        var id       = $('#agregar-server-id').val().trim();
-        var hostname = $('#agregar-hostname').val().trim();
-        var ip       = $('#agregar-ip').val().trim();
-        if (!id || !hostname || !ip) {
+        var id        = $('#agregar-server-id').val().trim();
+        var hostname  = $('#agregar-hostname').val().trim();
+        var ip        = $('#agregar-ip').val().trim();
+        var clavePub  = $('#agregar-clave-publica').val().trim();
+
+        if (!id || !hostname || !ip || !clavePub) {
             $('#agregar-error').removeClass('d-none').text('Todos los campos son requeridos.');
+            return;
+        }
+        if (!clavePub.startsWith('-----BEGIN PUBLIC KEY-----')) {
+            $('#agregar-error').removeClass('d-none').text('La clave pública debe estar en formato PEM.');
             return;
         }
 
@@ -194,18 +187,10 @@ $(document).ready(function() {
             url: '/api/admin/servidores',
             type: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ server_id: id, hostname: hostname, ip: ip }),
+            data: JSON.stringify({ server_id: id, hostname: hostname, ip: ip, clave_publica: clavePub }),
             timeout: 5000,
-            success: function(data) {
-                $('#agregar-form').addClass('d-none');
-                $('#agregar-error').addClass('d-none');
-                $('#agregar-secreto-valor').val(data.secreto || '');
-                $('#agregar-secreto-box').removeClass('d-none');
-                $('#btn-confirmar-agregar').addClass('d-none');
-                $('#agregar-btn-cancelar').text('Cerrar');
-                actualizarTabla();
-            },
-            error: function(xhr) {
+            success:  function()    { modalInstance('modal-agregar').hide(); actualizarTabla(); },
+            error:    function(xhr) {
                 var msg = 'Error al agregar el servidor.';
                 try { msg = JSON.parse(xhr.responseText).error || msg; } catch(e) {}
                 $('#agregar-error').removeClass('d-none').text(msg);
