@@ -113,49 +113,32 @@ function obtenerDatosDeLaravel() {
     });
 }
 
-// Funcion principal para actualizar la tabla via AJAX
+// Funcion principal para actualizar la tabla via AJAX de forma segura (API Gateway)
 function actualizarTabla() {
-    console.log('Actualizando tabla de servidores...');
+    console.log('Actualizando tabla de servidores a través del Gateway de Laravel...');
     
-    var fastapiUrl = window.fastapiUrl || '';
-    var fastapiKey = window.fastapiKey || '';
-
-    // Intentar obtener datos directamente de FastAPI
-    if (fastapiUrl && fastapiKey) {
-        $.ajax({
-            url: fastapiUrl + '/api/admin/servidores',
-            type: 'GET',
-            headers: {
-                'X-API-Key': fastapiKey
-            },
-            timeout: 5000,
-            success: function(data) {
-                console.log('Datos obtenidos de FastAPI:', data.length, 'servidores');
-                renderizarTablaDesdeJson(data);
-                actualizarHoraUltimaActualizacion();
-            },
-            error: function(xhr, status, error) {
-                console.warn('Error al obtener datos de FastAPI:', error);
-                obtenerDatosDeLaravel();
-            }
-        });
-    } else {
-        console.warn('FastAPI no configurado, usando Laravel.');
-        obtenerDatosDeLaravel();
-    }
+    $.ajax({
+        // Apuntamos a la ruta de Laravel. NUNCA a FastAPI directo.
+        // El ServidorController se encarga de usar la FASTAPI_KEY internamente.
+        url: '/api/admin/servidores',
+        type: 'GET',
+        timeout: 5000,
+        success: function(data) {
+            console.log('Datos obtenidos de forma segura:', data.length, 'servidores');
+            renderizarTablaDesdeJson(data);
+            actualizarHoraUltimaActualizacion();
+        },
+        error: function(xhr, status, error) {
+            console.error('Error al obtener datos del Gateway:', error);
+            document.getElementById('servers-table-body').innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3"><i class="fas fa-exclamation-triangle me-2"></i>Error de conexión con el motor de estados.</td></tr>';
+        }
+    });
 }
 
 // Inicializar cuando el DOM este listo
 $(document).ready(function() {
-    console.log('Monitor de Servidores iniciado');
+    console.log('Monitor de Servidores iniciado (Modo API Gateway)');
     console.log('Intervalo de actualizacion: 10 segundos');
-    
-    // Mostrar estado de configuracion
-    if (window.fastapiUrl && window.fastapiKey) {
-        console.log('FastAPI configurado en:', window.fastapiUrl);
-    } else {
-        console.warn('FastAPI NO configurado - usando datos de ejemplo');
-    }
     
     // Actualizar inmediatamente al cargar la pagina
     actualizarTabla();
