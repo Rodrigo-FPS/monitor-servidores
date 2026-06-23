@@ -11,42 +11,21 @@ class ApiClient
 
     public function __construct()
     {
+        // Se nutre exclusivamente de las variables de entorno del servidor
         $this->baseUrl = rtrim((string) config('monitor.fastapi_url'), '/');
         $this->apiKey  = (string) config('monitor.fastapi_key');
     }
 
-    private function http() //cliente HTTP con autenticacion Bearer y timeout fijo
+    private function http()
     {
+        // Forzamos un timeout de 10s para prevenir ataques de denegación de servicio (DoS) por agotamiento de recursos
         return Http::withToken($this->apiKey)->acceptJson()->timeout(10);
     }
 
     public function listarServidores(): array
     {
+        // Comunicación Server-to-Server (Backend a Backend)
         $r = $this->http()->get("{$this->baseUrl}/api/admin/servidores");
-        return ['status' => $r->status(), 'body' => $r->json() ?? []];
-    }
-
-    public function registrarServidor(string $serverId, string $hostname, string $ip): array
-    {
-        $r = $this->http()->post("{$this->baseUrl}/api/admin/servidores", [
-            'server_id' => $serverId,
-            'hostname'  => $hostname,
-            'ip'        => $ip,
-        ]);
-        return ['status' => $r->status(), 'body' => $r->json() ?? []];
-    }
-
-    public function actualizarServidor(string $serverId, string $ip): array
-    {
-        $r = $this->http()->patch("{$this->baseUrl}/api/admin/servidores/{$serverId}", [
-            'ip' => $ip,
-        ]);
-        return ['status' => $r->status(), 'body' => $r->json() ?? []];
-    }
-
-    public function eliminarServidor(string $serverId): array
-    {
-        $r = $this->http()->delete("{$this->baseUrl}/api/admin/servidores/{$serverId}");
         return ['status' => $r->status(), 'body' => $r->json() ?? []];
     }
 }
