@@ -44,11 +44,6 @@
 @endsection
 
 @push('scripts')
-<script>
-    // Configuracion global para JavaScript desde Laravel
-    window.fastapiUrl = '{{ config('monitor.fastapi_url') }}';
-    window.fastapiKey = '{{ config('monitor.fastapi_key') }}';
-</script>
 <script src="{{ asset('js/monitor.js') }}"></script>
 @endpush
 @push('scripts')
