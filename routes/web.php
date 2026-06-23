@@ -8,7 +8,7 @@ use App\Http\Controllers\ServidorController;
 // Autenticacion
 Route::get('/login',  [LoginController::class, 'mostrar'])->name('login');
 Route::post('/login', [LoginController::class, 'autenticar']);
-Route::post('/logout',[LoginController::class, 'cerrar'])->middleware('admin.auth');
+Route::post('/logout',[LoginController::class, 'cerrar'])->middleware('admin.auth')->name('logout');
 
 // Panel de monitoreo protegido por sesion admin
 Route::middleware('admin.auth')->group(function () {
