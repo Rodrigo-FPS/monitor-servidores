@@ -5,6 +5,9 @@ use App\Http\Controllers\LoginController;
 use App\Http\Controllers\MonitorController;
 use App\Http\Controllers\ServidorController;
 
+// Raiz redirige al login
+Route::get('/', fn() => redirect('/login'));
+
 // Autenticacion
 Route::get('/login',  [LoginController::class, 'mostrar'])->name('login');
 Route::post('/login', [LoginController::class, 'autenticar']);
