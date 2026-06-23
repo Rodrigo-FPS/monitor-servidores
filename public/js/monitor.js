@@ -94,25 +94,6 @@ function actualizarHoraUltimaActualizacion() {
     document.getElementById('last-update-time').textContent = timeString;
 }
 
-// Funcion para obtener datos desde Laravel (fallback)
-function obtenerDatosDeLaravel() {
-    console.log('Usando Laravel como fallback...');
-    
-    $.ajax({
-        url: '/monitor/data',
-        type: 'GET',
-        success: function(html) {
-            console.log('Datos obtenidos de Laravel (fallback).');
-            document.getElementById('servers-table-body').innerHTML = html;
-            actualizarHoraUltimaActualizacion();
-        },
-        error: function(xhr, status, error) {
-            console.error('Error al obtener datos de Laravel:', error);
-            document.getElementById('servers-table-body').innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3"><i class="fas fa-exclamation-triangle me-2"></i>Error al cargar los datos de los servidores.</td></tr>';
-        }
-    });
-}
-
 // Funcion principal para actualizar la tabla via AJAX de forma segura (API Gateway)
 function actualizarTabla() {
     console.log('Actualizando tabla de servidores a través del Gateway de Laravel...');

@@ -46,6 +46,3 @@
 @push('scripts')
 <script src="{{ asset('js/monitor.js') }}"></script>
 @endpush
-@push('scripts')
-<script src="{{ asset('js/monitor.js') }}"></script>
-@endpush
