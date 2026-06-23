@@ -11,4 +11,8 @@ return [
     // Tiempo de actualización automática del monitor
     'auto_refresh_segundos' => env('MONITOR_AUTO_REFRESH', 10),
 
+    // Protección contra fuerza bruta en login
+    'login_max_intentos' => (int) env('LOGIN_MAX_INTENTOS', 5),
+    'login_ventana_min'  => (int) env('LOGIN_VENTANA_MINUTOS', 10),
+
 ];
