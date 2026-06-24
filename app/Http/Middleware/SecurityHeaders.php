@@ -17,7 +17,10 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set(
             'Content-Security-Policy',
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none';"
+            // style-src 'self' (sin 'unsafe-inline') bloquea la inyeccion de <style>;
+            // style-src-attr 'unsafe-inline' permite solo los atributos style en linea
+            // que Bootstrap aplica via JS (modales, backdrops).
+            "default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none';"
         );
         $response->headers->set(
             'Strict-Transport-Security',

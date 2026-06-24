@@ -5,10 +5,14 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=borre
-Group=borre
-WorkingDirectory=/home/borre/monitor-servidores/servidor-central
-ExecStart=/home/borre/monitor-servidores/servidor-central/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+# Usuario de sistema dedicado y sin login. Crear con:
+#   sudo useradd --system --no-create-home --shell /sbin/nologin monitor-api
+# Ajustar WorkingDirectory/ExecStart a la ruta real del despliegue.
+User=monitor-api
+Group=monitor-api
+WorkingDirectory=/var/www/monitor/servidor-central
+# Enlazar SOLO a loopback: el backend es interno, se accede via nginx.
+ExecStart=/var/www/monitor/servidor-central/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
 
 # ADMIN_API_KEY se lee de /etc/monitor-api/admin_api_key via CREDENTIALS_DIRECTORY
 # El archivo debe tener permisos 600 y ser propiedad de root
@@ -18,11 +22,26 @@ Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
 
+# --- Confinamiento ---
 NoNewPrivileges=true
 PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
+ProtectKernelLogs=true
 ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target

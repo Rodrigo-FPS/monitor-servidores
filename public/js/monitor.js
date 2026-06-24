@@ -94,6 +94,13 @@ function modalInstance(id) {
 }
 
 $(document).ready(function() {
+    // Enviar el token CSRF en toda peticion AJAX que modifique estado.
+    // El token se publica en <meta name="csrf-token"> dentro de layouts/app.blade.php.
+    var csrfToken = $('meta[name="csrf-token"]').attr('content');
+    $.ajaxSetup({
+        headers: { 'X-CSRF-TOKEN': csrfToken }
+    });
+
     actualizarTabla();
     setInterval(actualizarTabla, 10000);
 

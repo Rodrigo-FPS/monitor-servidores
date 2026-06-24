@@ -48,7 +48,11 @@ async def job_estados():
 
 @asynccontextmanager
 async def ciclo_de_vida(app: FastAPI):
-    await inicializar_base_datos()
+    #En produccion el esquema se crea con db/schema.sql usando el rol DBA; el rol de
+    #runtime (monitor_app) sigue el principio de minimos privilegios y NO tiene CREATE.
+    #create_all solo se usa fuera de produccion para facilitar el desarrollo.
+    if AMBIENTE != "produccion":
+        await inicializar_base_datos()
     tarea = asyncio.create_task(job_estados())
     yield
     tarea.cancel()

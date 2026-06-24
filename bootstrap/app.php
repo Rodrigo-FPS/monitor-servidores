@@ -22,9 +22,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin.auth' => AdminAuth::class,
         ]);
-        $middleware->validateCsrfTokens(except: [
-            'api/*', //los endpoints API usan HMAC-SHA256 en lugar de CSRF
-        ]);
+        //Sin excepciones de CSRF: /api/admin/* se autentica por sesion y modifica
+        //estado, por lo que DEBE validar el token CSRF. Los endpoints /api/heartbeat
+        //y /api/shutdown los atiende FastAPI directamente (no pasan por Laravel) y se
+        //autentican con firma Ed25519, por lo que no requieren exencion aqui.
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

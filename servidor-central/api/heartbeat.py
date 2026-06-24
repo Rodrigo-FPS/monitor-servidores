@@ -27,6 +27,18 @@ def _extraer_firma(autorizacion: str):
     return partes[1].strip()
 
 
+def _obtener_ip_cliente(request: Request) -> str:
+    #nginx fija X-Real-IP con $remote_addr usando proxy_set_header, que REEMPLAZA
+    #cualquier valor que envie el cliente -> no es falsificable. No usamos
+    #X-Forwarded-For ni request.client.host porque, con $proxy_add_x_forwarded_for
+    #o proxy_headers de uvicorn, la parte izquierda la controla el cliente.
+    #Si no hay proxy (acceso directo en loopback) se cae a la IP del socket.
+    ip_real = request.headers.get("X-Real-IP", "").strip()
+    if ip_real:
+        return ip_real
+    return request.client.host if request.client else ""
+
+
 async def _buscar_servidor(server_id: str, sesion: AsyncSession):
     resultado = await sesion.execute(
         select(Servidor).where(Servidor.server_id == server_id)
@@ -52,7 +64,7 @@ async def validar_peticion_ed25519(request: Request, sesion: AsyncSession):
     if servidor is None:
         return None, False
 
-    if request.client.host != servidor.ip_registrada:
+    if _obtener_ip_cliente(request) != servidor.ip_registrada:
         return None, False
 
     if not validar_timestamp(timestamp_iso):

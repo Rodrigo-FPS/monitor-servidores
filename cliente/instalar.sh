@@ -21,8 +21,9 @@ else
     echo "[OK] usuario monitor-agent creado"
 fi
 
-echo "[...] instalando dependencias Python..."
-pip3 install httpx cryptography -q --break-system-packages 2>/dev/null || pip3 install httpx cryptography -q
+echo "[...] instalando dependencias Python (versiones fijadas)..."
+REQ="$DIR/requirements.txt"
+pip3 install -r "$REQ" -q --break-system-packages 2>/dev/null || pip3 install -r "$REQ" -q
 echo "[OK] dependencias listas"
 
 mkdir -p /opt/monitor-agent

@@ -129,13 +129,21 @@ def main():
     server_id  = config.get("SERVER_ID", "").strip()
     server_url = config.get("SERVER_URL", "").strip()
     intervalo  = int(config.get("INTERVALO_SEGUNDOS", "30"))
+    permitir_http = config.get("PERMITIR_HTTP", "0").strip() == "1"
 
     if not server_id or not server_url:
         print("[ERROR] faltan SERVER_ID o SERVER_URL en la configuracion")
         sys.exit(1)
 
+    #El PDF exige transmisiones cifradas: se rechaza HTTP por defecto. Solo entornos
+    #de prueba controlados pueden permitirlo con PERMITIR_HTTP=1 en la config.
     if not server_url.startswith("https://"):
-        print(f"[ADVERTENCIA] SERVER_URL no usa HTTPS: {server_url}")
+        if permitir_http:
+            print(f"[ADVERTENCIA] SERVER_URL sin HTTPS permitido por PERMITIR_HTTP=1: {server_url}")
+        else:
+            print(f"[ERROR] SERVER_URL debe usar HTTPS: {server_url}")
+            print("[ERROR] para pruebas locales sin TLS, anade PERMITIR_HTTP=1 en config.env")
+            sys.exit(1)
 
     url_heartbeat = server_url.rstrip("/") + "/api/heartbeat"
     url_shutdown  = server_url.rstrip("/") + "/api/shutdown"

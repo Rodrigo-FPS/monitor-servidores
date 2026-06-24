@@ -101,12 +101,14 @@ Dentro de tinker:
 
 ```php
 App\Models\Admin::create([
-    'name'     => 'admin',
-    'email'    => 'admin@ejemplo.com',
+    'username' => 'admin',
     'password' => bcrypt('contrasena-segura'),
 ]);
 exit
 ```
+
+El modelo `Admin` solo tiene los campos `username` y `password` (el hash se
+almacena con bcrypt). No uses `name` ni `email`: no existen en la tabla.
 
 ### 5. Instalar dependencias de FastAPI
 
@@ -147,7 +149,16 @@ Copiar el mismo valor en `FASTAPI_KEY` dentro de `/etc/monitor-laravel/.env`.
 
 ### 8. Instalar el servicio systemd del FastAPI
 
-Editar `servidor-central/monitor-fastapi.service` para ajustar `User`, `Group` y `WorkingDirectory` al usuario y ruta real del sistema. Luego:
+Crear el usuario de sistema dedicado (sin login) con el que corre el backend:
+
+```bash
+sudo useradd --system --no-create-home --shell /sbin/nologin monitor-api
+```
+
+Ajustar en `servidor-central/monitor-fastapi.service` el `WorkingDirectory` y la
+ruta de `ExecStart` a la ubicacion real del despliegue (por defecto
+`/var/www/monitor/servidor-central`). El servicio ya enlaza uvicorn solo a
+`127.0.0.1` (backend interno) y viene confinado con systemd. Luego:
 
 ```bash
 sudo cp servidor-central/monitor-fastapi.service /etc/systemd/system/

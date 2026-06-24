@@ -13,7 +13,8 @@ class MiddlewareSeguridad(BaseHTTPMiddleware):
         respuesta.headers["Content-Security-Policy"]   = (
             "default-src 'self'; "
             "script-src 'self'; "
-            "style-src 'self' 'unsafe-inline'; "
+            "style-src 'self'; "
+            "style-src-attr 'unsafe-inline'; "
             "img-src 'self' data:; "
             "frame-ancestors 'none';"
         )

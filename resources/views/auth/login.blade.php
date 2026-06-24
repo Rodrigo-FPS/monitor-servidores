@@ -6,10 +6,7 @@
     <title>Iniciar Sesión — {{ config('app.name') }}</title>
     <link href="/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/all.min.css">
-    <style>
-        body { background-color: #1a1a2e; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .login-card { width: 100%; max-width: 420px; }
-    </style>
+    <link rel="stylesheet" href="/css/login.css">
 </head>
 <body>
     <div class="login-card">
