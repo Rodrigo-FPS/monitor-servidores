@@ -1,0 +1,278 @@
+# Monitor de Servidores
+
+Sistema de monitoreo de servidores en red local. Cada servidor cliente ejecuta un agente que envía latidos periódicos al servidor central. El servidor central expone un panel web con el estado en tiempo real de todos los servidores registrados.
+
+## Arquitectura
+
+```
+[Servidor cliente]                [Servidor central]
+  latidos.py  ──── HTTPS/Ed25519 ──>  FastAPI (puerto 8000)
+                                          |
+                                     SQLite / PostgreSQL
+                                          |
+                                      Laravel 13
+                                          |
+                              [Admin]  navegador web
+```
+
+- **FastAPI** (Python): recibe y valida latidos, gestiona el estado de los servidores y expone una API interna para el panel.
+- **Laravel** (PHP): panel web con autenticación, muestra el estado de los servidores y permite gestionar el registro de clientes.
+- **Agente cliente** (Python): corre en cada servidor monitoreado, firma y envía latidos con Ed25519.
+
+---
+
+## Requisitos
+
+### Servidor central
+
+| Componente | Version minima |
+|---|---|
+| PHP | 8.4 |
+| Laravel | 13 |
+| Composer | 2 |
+| Python | 3.11 |
+| pip | 23+ |
+| nginx | cualquier version reciente |
+| systemd | 247+ (para LoadCredential) |
+| SQLite | 3.35+ (desarrollo) |
+| PostgreSQL | 15+ (produccion) |
+
+### Servidores cliente
+
+| Componente | Version minima |
+|---|---|
+| Python | 3.11 |
+| pip | 23+ |
+| systemd | 232+ |
+
+---
+
+## Instalacion del servidor central
+
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/Rodrigo-FPS/monitor-servidores.git /var/www/monitor
+cd /var/www/monitor
+```
+
+### 2. Instalar dependencias de Laravel
+
+```bash
+composer install --no-dev --optimize-autoloader
+php artisan key:generate
+```
+
+### 3. Crear el .env de Laravel fuera del webroot
+
+```bash
+sudo mkdir -p /etc/monitor-laravel
+sudo cp .env.example /etc/monitor-laravel/.env
+sudo chown www-data:www-data /etc/monitor-laravel/.env
+sudo chmod 600 /etc/monitor-laravel/.env
+sudo chmod 750 /etc/monitor-laravel
+sudo chown root:www-data /etc/monitor-laravel
+```
+
+Editar `/etc/monitor-laravel/.env` con los valores del entorno:
+
+```env
+APP_KEY=           # se genera con: php artisan key:generate --show
+APP_URL=https://tu-dominio.com
+
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=monitor_laravel
+DB_USERNAME=monitor_app
+DB_PASSWORD=password-seguro
+
+FASTAPI_URL=http://127.0.0.1:8000
+FASTAPI_KEY=       # misma clave que ADMIN_API_KEY del FastAPI
+```
+
+### 4. Crear la base de datos de Laravel y el usuario administrador
+
+```bash
+sudo -u www-data php artisan migrate
+sudo -u www-data php artisan tinker
+```
+
+Dentro de tinker:
+
+```php
+App\Models\Admin::create([
+    'name'     => 'admin',
+    'email'    => 'admin@ejemplo.com',
+    'password' => bcrypt('contrasena-segura'),
+]);
+exit
+```
+
+### 5. Instalar dependencias de FastAPI
+
+```bash
+cd /var/www/monitor/servidor-central
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 6. Crear el .env del FastAPI
+
+```bash
+cp servidor-central/.env.example servidor-central/.env
+```
+
+Editar `servidor-central/.env`. En produccion solo necesita las variables no sensibles, ya que `ADMIN_API_KEY` se gestiona via systemd:
+
+```env
+HEARTBEAT_INTERVALO_SEGUNDOS=30
+HEARTBEAT_TIMEOUT_SEGUNDOS=90
+VENTANA_HMAC_SEGUNDOS=60
+AMBIENTE=produccion
+```
+
+### 7. Crear la credencial de API del FastAPI
+
+Generar una clave aleatoria y guardarla como credencial de systemd:
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(64))" | sudo tee /etc/monitor-api/admin_api_key
+sudo chmod 600 /etc/monitor-api/admin_api_key
+sudo chown root:root /etc/monitor-api/admin_api_key
+sudo chmod 700 /etc/monitor-api
+```
+
+Copiar el mismo valor en `FASTAPI_KEY` dentro de `/etc/monitor-laravel/.env`.
+
+### 8. Instalar el servicio systemd del FastAPI
+
+Editar `servidor-central/monitor-fastapi.service` para ajustar `User`, `Group` y `WorkingDirectory` al usuario y ruta real del sistema. Luego:
+
+```bash
+sudo cp servidor-central/monitor-fastapi.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now monitor-fastapi
+```
+
+Verificar:
+
+```bash
+sudo systemctl status monitor-fastapi
+```
+
+### 9. Configurar nginx
+
+Copiar y adaptar la plantilla incluida:
+
+```bash
+sudo cp infra/nginx/monitor.conf /etc/nginx/sites-available/monitor
+sudo ln -s /etc/nginx/sites-available/monitor /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Editar el archivo para reemplazar `TU_DOMINIO` y las rutas de certificado SSL.
+
+---
+
+## Instalacion del agente cliente
+
+Ejecutar en cada servidor que se quiera monitorear como root:
+
+```bash
+sudo bash cliente/instalar.sh
+```
+
+El script crea el usuario `monitor-agent`, instala las dependencias Python y registra el servicio systemd.
+
+### Configurar el agente
+
+```bash
+sudo nano /etc/monitor-agent/config.env
+```
+
+```env
+SERVER_ID=nombre-unico-del-servidor
+SERVER_URL=https://tu-dominio.com
+INTERVALO_SEGUNDOS=30
+```
+
+`SERVER_ID` debe ser unico en todo el sistema y usar solo letras, numeros, guiones y guion bajo.
+
+### Generar las claves Ed25519 y registrar el servidor
+
+Arrancar el agente una sola vez para que genere el par de claves:
+
+```bash
+sudo systemctl start monitor-agent
+```
+
+Leer la clave publica generada:
+
+```bash
+sudo cat /etc/monitor-agent/public.key
+```
+
+Entrar al panel web, ir a **Agregar Servidor** e introducir el `SERVER_ID`, hostname, IP y la clave publica completa incluyendo las lineas `-----BEGIN PUBLIC KEY-----` y `-----END PUBLIC KEY-----`.
+
+Una vez registrado el servidor, el agente comenzara a enviar latidos. Verificar:
+
+```bash
+sudo journalctl -u monitor-agent -f
+```
+
+---
+
+## Autenticacion de los agentes
+
+Cada agente se autentica con firma asimetrica Ed25519:
+
+1. El agente genera un par de claves en el primer arranque. La clave privada queda en `/etc/monitor-agent/private.key` con permisos 400.
+2. El administrador registra la clave publica en el servidor central a traves del panel web.
+3. En cada latido el agente firma el mensaje `server_id:timestamp_iso` con su clave privada y lo envia en el header `Authorization: Ed25519 <firma-base64>`.
+4. FastAPI verifica la firma contra la clave publica almacenada y rechaza peticiones con timestamp fuera de la ventana configurada en `VENTANA_HMAC_SEGUNDOS` (proteccion antireplay).
+5. Ademas de la firma, FastAPI verifica que la IP del cliente coincida con la IP registrada para ese `server_id`.
+
+La clave privada nunca se transmite ni se almacena fuera del servidor cliente.
+
+---
+
+## Estructura del repositorio
+
+```
+/
+|-- bootstrap/app.php          Laravel: configura el path del .env fuera del webroot
+|-- app/                       Controladores, middlewares y modelos de Laravel
+|-- resources/views/           Vistas Blade del panel web
+|-- routes/                    Rutas web y API de Laravel
+|-- public/                    Webroot: assets JS/CSS/fuentes (servidos localmente)
+|-- servidor-central/          Backend FastAPI
+|   |-- main.py                Punto de entrada de la aplicacion
+|   |-- config.py              Carga de configuracion y credenciales
+|   |-- api/                   Endpoints: heartbeat, shutdown, servidores
+|   |-- auth/                  Validacion de firma Ed25519
+|   |-- db/                    Modelos SQLAlchemy y helpers de base de datos
+|   |-- middleware/             Security headers de FastAPI
+|   |-- requirements.txt       Dependencias Python
+|   |-- monitor-fastapi.service Servicio systemd con LoadCredential
+|-- cliente/                   Agente para servidores monitoreados
+|   |-- latidos.py             Demonio de heartbeat
+|   |-- instalar.sh            Script de instalacion
+|   |-- config.env.example     Plantilla de configuracion
+|   |-- monitor-agent.service  Servicio systemd del agente
+|-- infra/
+|   |-- nginx/monitor.conf     Configuracion nginx de referencia
+|   |-- backup/                Scripts de backup y restauracion
+|-- database/migrations/       Migraciones de Laravel
+```
+
+---
+
+## Seguridad
+
+- Las sesiones de Laravel se cifran (`SESSION_ENCRYPT=true`) y el `.env` se almacena fuera del webroot en `/etc/monitor-laravel/` con permisos 600.
+- `ADMIN_API_KEY` del FastAPI no existe en ningun archivo `.env` en disco; se inyecta en tiempo de ejecucion via `systemd LoadCredential` desde `/etc/monitor-api/admin_api_key` (root:root, 600).
+- La CSP del panel web bloquea recursos externos (`script-src 'self'`). Bootstrap, jQuery y Font Awesome se sirven localmente desde `/public/`.
+- El login tiene proteccion contra fuerza bruta: bloqueo temporal tras `LOGIN_MAX_INTENTOS` intentos fallidos en `LOGIN_VENTANA_MINUTOS` minutos.
+- El agente cliente corre bajo el usuario sin privilegios `monitor-agent` con el servicio systemd confinado (`NoNewPrivileges`, `ProtectSystem=strict`, `MemoryDenyWriteExecute`).
