@@ -6,10 +6,11 @@ load_dotenv()
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    f"sqlite+aiosqlite:///{_BASE_DIR}/monitor.db",
-)
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL no configurada — define la variable en .env"
+    )
 
 def _leer_credencial(nombre: str) -> str:
     """Lee un secreto desde $CREDENTIALS_DIRECTORY (systemd LoadCredential).
@@ -31,4 +32,4 @@ if not ADMIN_API_KEY:
 HEARTBEAT_INTERVALO_SEGUNDOS = int(os.getenv("HEARTBEAT_INTERVALO_SEGUNDOS", "30"))
 HEARTBEAT_TIMEOUT_SEGUNDOS   = int(os.getenv("HEARTBEAT_TIMEOUT_SEGUNDOS", "90"))
 VENTANA_HMAC_SEGUNDOS        = int(os.getenv("VENTANA_HMAC_SEGUNDOS", "60"))
-AMBIENTE                     = os.getenv("AMBIENTE", "desarrollo")
+AMBIENTE                     = os.getenv("AMBIENTE", "produccion")

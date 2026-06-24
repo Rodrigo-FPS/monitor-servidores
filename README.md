@@ -8,7 +8,7 @@ Sistema de monitoreo de servidores en red local. Cada servidor cliente ejecuta u
 [Servidor cliente]                [Servidor central]
   latidos.py  ──── HTTPS/Ed25519 ──>  FastAPI (puerto 8000)
                                           |
-                                     SQLite / PostgreSQL
+                                        PostgreSQL
                                           |
                                       Laravel 13
                                           |
@@ -34,8 +34,7 @@ Sistema de monitoreo de servidores en red local. Cada servidor cliente ejecuta u
 | pip | 23+ |
 | nginx | cualquier version reciente |
 | systemd | 247+ (para LoadCredential) |
-| SQLite | 3.35+ (desarrollo) |
-| PostgreSQL | 15+ (produccion) |
+| PostgreSQL | 15+ |
 
 ### Servidores cliente
 
