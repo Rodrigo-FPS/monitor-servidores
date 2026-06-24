@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from db.database import obtener_sesion
 from db.models import Servidor
-from api.heartbeat import validar_peticion_hmac
+from api.heartbeat import validar_peticion_ed25519
 
 router = APIRouter()
 
@@ -25,7 +25,7 @@ async def recibir_shutdown(
     request: Request,
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
-    servidor, valido = await validar_peticion_hmac(request, sesion)
+    servidor, valido = await validar_peticion_ed25519(request, sesion)
 
     if valido:
         await registrar_apagado(servidor, sesion)

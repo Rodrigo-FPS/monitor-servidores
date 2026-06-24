@@ -5,7 +5,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.exceptions import InvalidSignature
 
-from config import VENTANA_HMAC_SEGUNDOS
+from config import VENTANA_ANTIREPLAY_SEGUNDOS
 
 
 def validar_timestamp(timestamp_iso: str) -> bool:
@@ -15,7 +15,7 @@ def validar_timestamp(timestamp_iso: str) -> bool:
             return False
         ahora = datetime.now(timezone.utc)
         diferencia = abs((ahora - momento).total_seconds())
-        return diferencia <= VENTANA_HMAC_SEGUNDOS
+        return diferencia <= VENTANA_ANTIREPLAY_SEGUNDOS
     except (ValueError, TypeError):
         return False
 

@@ -130,7 +130,7 @@ Editar `servidor-central/.env`. En produccion solo necesita las variables no sen
 ```env
 HEARTBEAT_INTERVALO_SEGUNDOS=30
 HEARTBEAT_TIMEOUT_SEGUNDOS=90
-VENTANA_HMAC_SEGUNDOS=60
+VENTANA_ANTIREPLAY_SEGUNDOS=60
 AMBIENTE=produccion
 ```
 
@@ -241,7 +241,7 @@ Cada agente se autentica con firma asimetrica Ed25519:
 1. El agente genera un par de claves en el primer arranque. La clave privada queda en `/etc/monitor-agent/private.key` con permisos 400.
 2. El administrador registra la clave publica en el servidor central a traves del panel web.
 3. En cada latido el agente firma el mensaje `server_id:timestamp_iso` con su clave privada y lo envia en el header `Authorization: Ed25519 <firma-base64>`.
-4. FastAPI verifica la firma contra la clave publica almacenada y rechaza peticiones con timestamp fuera de la ventana configurada en `VENTANA_HMAC_SEGUNDOS` (proteccion antireplay).
+4. FastAPI verifica la firma contra la clave publica almacenada y rechaza peticiones con timestamp fuera de la ventana configurada en `VENTANA_ANTIREPLAY_SEGUNDOS` (proteccion antireplay).
 5. Ademas de la firma, FastAPI verifica que la IP del cliente coincida con la IP registrada para ese `server_id`.
 
 La clave privada nunca se transmite ni se almacena fuera del servidor cliente.

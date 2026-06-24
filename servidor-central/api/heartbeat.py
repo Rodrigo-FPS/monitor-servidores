@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from db.database import obtener_sesion
 from db.models import Servidor
-from auth.hmac_validator import validar_firma_ed25519, validar_timestamp
+from auth.firma_validator import validar_firma_ed25519, validar_timestamp
 
 router = APIRouter()
 
@@ -74,10 +74,6 @@ async def validar_peticion_ed25519(request: Request, sesion: AsyncSession):
         return None, False
 
     return servidor, True
-
-
-# alias para shutdown.py que importa este nombre
-validar_peticion_hmac = validar_peticion_ed25519
 
 
 async def registrar_latido(servidor: Servidor, sesion: AsyncSession):
