@@ -126,10 +126,11 @@ def main():
         print(f"[ERROR] al leer configuracion: {e}")
         sys.exit(1)
 
-    server_id  = config.get("SERVER_ID", "").strip()
-    server_url = config.get("SERVER_URL", "").strip()
-    intervalo  = int(config.get("INTERVALO_SEGUNDOS", "30"))
+    server_id    = config.get("SERVER_ID", "").strip()
+    server_url   = config.get("SERVER_URL", "").strip()
+    intervalo    = int(config.get("INTERVALO_SEGUNDOS", "30"))
     permitir_http = config.get("PERMITIR_HTTP", "0").strip() == "1"
+    verificar_ssl = config.get("VERIFICAR_SSL", "1").strip() != "0"
 
     if not server_id or not server_url:
         print("[ERROR] faltan SERVER_ID o SERVER_URL en la configuracion")
@@ -148,6 +149,9 @@ def main():
     url_heartbeat = server_url.rstrip("/") + "/api/heartbeat"
     url_shutdown  = server_url.rstrip("/") + "/api/shutdown"
 
+    if not verificar_ssl:
+        print("[ADVERTENCIA] verificacion SSL deshabilitada (certificado autofirmado)")
+
     print(f"[INFO] demonio iniciado ID: {server_id}")
     print(f"[INFO] servidor: {server_url}  intervalo: {intervalo}s")
 
@@ -160,7 +164,7 @@ def main():
     signal.signal(signal.SIGTERM, manejar_apagado)
     signal.signal(signal.SIGINT, manejar_apagado)
 
-    with httpx.Client() as cliente_http:
+    with httpx.Client(verify=verificar_ssl) as cliente_http:
         while seguir_corriendo[0]:
             enviar_peticion(cliente_http, url_heartbeat, server_id, clave_privada, "heartbeat")
 
