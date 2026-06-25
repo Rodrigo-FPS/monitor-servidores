@@ -98,7 +98,10 @@ Generar la `APP_KEY` (escribe directamente en `/etc/monitor-laravel/.env`):
 sudo -u www-data php artisan key:generate --force
 ```
 
-Editar el resto de `/etc/monitor-laravel/.env` con los valores del entorno:
+Editar `/etc/monitor-laravel/.env` con los valores del entorno. Por ahora rellena
+solo las variables de base de datos (`DB_PASSWORD` debe coincidir con la contrasena
+que pongas al rol `laravel_app` en el script SQL del paso siguiente). `FASTAPI_KEY`
+se rellena en el paso 8, una vez generada la clave:
 
 ```env
 APP_URL=https://tu-dominio.com
@@ -108,10 +111,10 @@ DB_HOST=127.0.0.1
 DB_PORT=5432
 DB_DATABASE=monitor_laravel
 DB_USERNAME=laravel_app
-DB_PASSWORD=password-seguro
+DB_PASSWORD=contrasena-segura-laravel-app   # misma que REEMPLAZAR_CON_CONTRASENA_SEGURA_APP del paso 5
 
 FASTAPI_URL=http://127.0.0.1:8000
-FASTAPI_KEY=       # misma clave que ADMIN_API_KEY del FastAPI
+FASTAPI_KEY=     # dejar vacio por ahora; se completa en el paso 8
 ```
 
 ### 5. Crear la base de datos de Laravel, sus tablas y el administrador
@@ -226,10 +229,21 @@ sudo chmod 600 /etc/monitor-api/admin_api_key /etc/monitor-api/database_url
 sudo chown root:root /etc/monitor-api/admin_api_key /etc/monitor-api/database_url
 ```
 
-Sustituir `PASSWORD` por la contrasena real del rol `fastapi_app` de PostgreSQL.
-Copiar el valor de `admin_api_key` en `FASTAPI_KEY` dentro de `/etc/monitor-laravel/.env`.
+Sustituir `PASSWORD` en el comando de `database_url` por la contrasena real del
+rol `fastapi_app` de PostgreSQL (la que pusiste en `REEMPLAZAR_CON_CONTRASENA_SEGURA_APP`
+del script `servidor-central/db/usuarios_roles.sql`).
 
-Copiar el mismo valor en `FASTAPI_KEY` dentro de `/etc/monitor-laravel/.env`.
+Ahora leer la `admin_api_key` generada y copiarla en el `.env` de Laravel:
+
+```bash
+sudo cat /etc/monitor-api/admin_api_key
+```
+
+Editar `/etc/monitor-laravel/.env` y pegar ese valor en `FASTAPI_KEY`:
+
+```env
+FASTAPI_KEY=<valor-copiado-de-admin_api_key>
+```
 
 ### 9. Instalar el servicio systemd del FastAPI
 
