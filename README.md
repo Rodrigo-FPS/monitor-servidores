@@ -97,18 +97,25 @@ sudo -u www-data php artisan migrate
 sudo -u www-data php artisan tinker
 ```
 
-Dentro de tinker:
+Dentro de tinker, crear el administrador. **El rol debe fijarse explicitamente**:
+el campo `rol` no es asignable en masa y por defecto vale `usuario` (minimo
+privilegio), por lo que `Admin::create([...])` SIN fijar el rol crea una cuenta de
+solo lectura. Para crear un administrador:
 
 ```php
-App\Models\Admin::create([
-    'username' => 'admin',
-    'password' => bcrypt('contrasena-segura'),
-]);
+$admin = new App\Models\Admin();
+$admin->username = 'admin';
+$admin->password = bcrypt('contrasena-segura');
+$admin->rol      = 'admin';
+$admin->save();
 exit
 ```
 
-El modelo `Admin` solo tiene los campos `username` y `password` (el hash se
+El modelo `Admin` solo tiene los campos `username`, `password` y `rol` (el hash se
 almacena con bcrypt). No uses `name` ni `email`: no existen en la tabla.
+
+Ver la seccion **Roles y gestion de usuarios** mas abajo para crear cuentas de solo
+lectura y entender el modelo de roles.
 
 ### 5. Instalar dependencias de FastAPI
 
@@ -246,6 +253,58 @@ Cada agente se autentica con firma asimetrica Ed25519:
 La clave privada nunca se transmite ni se almacena fuera del servidor cliente.
 
 ---
+
+## Roles y gestion de usuarios
+
+El panel define dos roles de aplicacion (distintos de los roles de PostgreSQL):
+
+| Rol | Puede ver el estado | Puede agregar/editar/eliminar servidores |
+|---|---|---|
+| `admin`   | Si | Si |
+| `usuario` | Si | No (solo lectura) |
+
+La autorizacion se aplica en el servidor (middleware `rol.admin` + revalidacion en el
+controlador, ambos fallan cerrado). Ocultar botones en la interfaz es solo cosmetico:
+un `usuario` que fuerce una peticion de escritura recibe `403`.
+
+### No hay registro de usuarios (limitacion del proyecto)
+
+El sistema **no incluye registro de usuarios**: no existe ninguna pagina ni endpoint
+para crear cuentas desde la web. Las cuentas se dan de alta manualmente en el servidor
+por un administrador con acceso por consola.
+
+Justificacion: un panel de monitoreo lo usa un grupo pequeno y fijo de operadores de
+confianza. Un registro publico anadiria una superficie de ataque grande e innecesaria
+(alta automatizada de cuentas, enumeracion de usuarios, y flujos de verificacion por
+correo o de recuperacion de contrasena, que son a su vez vectores de ataque). Al no
+existir registro, el sistema no tiene ningun flujo de creacion de cuentas accesible sin
+autenticacion, y el alta queda restringida a quien ya tiene acceso al servidor. La
+contrapartida (limitacion) es que **agregar o quitar usuarios requiere acceso por linea
+de comandos al servidor**, no se hace desde la interfaz. Es aceptable para el alcance del
+proyecto (pocos operadores) y se documentara con mas detalle en el apartado de
+restricciones del documento.
+
+### Como dar de alta usuarios
+
+En el servidor, con `sudo -u www-data php artisan tinker`:
+
+```php
+// Administrador (control total) — el rol debe fijarse explicitamente
+$a = new App\Models\Admin();
+$a->username = 'admin';
+$a->password = bcrypt('contrasena-larga-y-unica');
+$a->rol      = 'admin';
+$a->save();
+
+// Usuario de solo lectura — el rol por defecto ya es 'usuario'
+$u = new App\Models\Admin();
+$u->username = 'lector';
+$u->password = bcrypt('otra-contrasena-larga');
+$u->save();
+```
+
+El campo `rol` no es asignable en masa y cualquier valor invalido se normaliza a
+`usuario` (minimo privilegio por defecto).
 
 ## Estructura del repositorio
 
