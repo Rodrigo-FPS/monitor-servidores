@@ -23,10 +23,24 @@ class ServidorController extends Controller
     /** Registra una accion del administrador en el canal de auditoria. */
     private function auditar(string $accion, array $datos, Request $request): void
     {
+        $user = Auth::guard('admin')->user();
         Log::channel('auditoria')->info($accion, array_merge($datos, [
-            'admin' => Auth::guard('admin')->user()?->username,
+            'admin' => $user?->username,
+            'rol'   => $user?->rol,
             'ip'    => $request->ip(),
         ]));
+    }
+
+    /**
+     * Defensa en profundidad: aunque la ruta ya exige el middleware rol.admin, se
+     * revalida aqui para que las escrituras fallen cerrado si la ruta se reconfigura.
+     */
+    private function denegarSiNoAdmin(): ?JsonResponse
+    {
+        if (! Auth::guard('admin')->user()?->esAdmin()) {
+            return response()->json(['error' => 'no autorizado'], 403);
+        }
+        return null;
     }
 
     /** Indica si la respuesta de la API representa exito (2xx). */
@@ -67,6 +81,10 @@ class ServidorController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        if ($denegado = $this->denegarSiNoAdmin()) {
+            return $denegado;
+        }
+
         $serverId   = trim((string) $request->input('server_id', ''));
         $hostname   = trim((string) $request->input('hostname', ''));
         $ip         = trim((string) $request->input('ip', ''));
@@ -118,6 +136,10 @@ class ServidorController extends Controller
 
     public function update(Request $request, string $serverId): JsonResponse
     {
+        if ($denegado = $this->denegarSiNoAdmin()) {
+            return $denegado;
+        }
+
         $serverId = trim($serverId);
 
         if ($serverId === '' || strlen($serverId) > 64 || !$this->esServerIdValido($serverId)) {
@@ -154,6 +176,10 @@ class ServidorController extends Controller
 
     public function destroy(Request $request, string $serverId): JsonResponse
     {
+        if ($denegado = $this->denegarSiNoAdmin()) {
+            return $denegado;
+        }
+
         $serverId = trim($serverId);
 
         if ($serverId === '' || strlen($serverId) > 64 || !$this->esServerIdValido($serverId)) {

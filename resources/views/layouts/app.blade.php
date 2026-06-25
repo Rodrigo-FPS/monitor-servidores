@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="es-admin" content="{{ auth('admin')->user()?->esAdmin() ? 'true' : 'false' }}">
     <title>@yield('title', 'Monitor de Servidores') - {{ config('app.name') }}</title>
 
     <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">

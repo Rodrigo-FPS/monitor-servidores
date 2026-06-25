@@ -1,3 +1,9 @@
+// Rol del usuario en sesion (publicado en <meta name="es-admin">). Solo controla la
+// UI; la autorizacion REAL la aplica el servidor (middleware rol.admin + revalidacion
+// en el controlador). Un usuario que forzara la peticion recibe 403.
+var ES_ADMIN = document.querySelector('meta[name="es-admin"]')
+    && document.querySelector('meta[name="es-admin"]').getAttribute('content') === 'true';
+
 function escapeHtml(unsafe) {
     if (!unsafe) return '';
     return String(unsafe)
@@ -49,12 +55,16 @@ function renderizarTablaDesdeJson(servers) {
             html += '<td><span class="badge ' + statusClass + '"><i class="fas ' + statusIcon + ' me-1"></i>' + statusText + '</span></td>';
             html += '<td>' + timeAgo(s.ultimo_visto) + '</td>';
             html += '<td>';
-            html += '<button class="btn btn-sm btn-outline-primary me-1 btn-editar-servidor" ' +
-                    'data-server-id="' + escapeHtml(s.server_id) + '" data-ip="' + escapeHtml(s.ip) + '" title="Editar">' +
-                    '<i class="fas fa-edit"></i></button>';
-            html += '<button class="btn btn-sm btn-outline-danger btn-eliminar-servidor" ' +
-                    'data-server-id="' + escapeHtml(s.server_id) + '" title="Eliminar">' +
-                    '<i class="fas fa-trash"></i></button>';
+            if (ES_ADMIN) {
+                html += '<button class="btn btn-sm btn-outline-primary me-1 btn-editar-servidor" ' +
+                        'data-server-id="' + escapeHtml(s.server_id) + '" data-ip="' + escapeHtml(s.ip) + '" title="Editar">' +
+                        '<i class="fas fa-edit"></i></button>';
+                html += '<button class="btn btn-sm btn-outline-danger btn-eliminar-servidor" ' +
+                        'data-server-id="' + escapeHtml(s.server_id) + '" title="Eliminar">' +
+                        '<i class="fas fa-trash"></i></button>';
+            } else {
+                html += '<span class="text-muted small">Solo lectura</span>';
+            }
             html += '</td>';
             html += '</tr>';
         }
@@ -103,6 +113,10 @@ $(document).ready(function() {
 
     actualizarTabla();
     setInterval(actualizarTabla, 10000);
+
+    // El rol usuario es de solo lectura: no se enlazan los controles de gestion.
+    // La autorizacion real esta en el servidor; esto es solo limpieza de UI.
+    if (!ES_ADMIN) return;
 
     // ── Abrir modal editar ────────────────────────────────────────────────────
     $(document).on('click', '.btn-editar-servidor', function() {

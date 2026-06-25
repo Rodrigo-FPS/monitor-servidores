@@ -26,8 +26,14 @@ Route::get('/monitor/data', [MonitorController::class, 'getData'])->name('monito
 
 // Gateway hacia FastAPI — en web.php para que el guard session funcione con admin.auth
 Route::middleware('admin.auth')->prefix('api/admin')->group(function () {
-    Route::get('/servidores',               [ServidorController::class, 'index']);
-    Route::post('/servidores',              [ServidorController::class, 'store']);
-    Route::patch('/servidores/{server_id}', [ServidorController::class, 'update']);
-    Route::delete('/servidores/{server_id}',[ServidorController::class, 'destroy']);
+    // Lectura del estado: accesible para ambos roles (admin y usuario).
+    Route::get('/servidores', [ServidorController::class, 'index']);
+
+    // Escritura: solo el rol admin. rol.admin corre despues de admin.auth, por lo
+    // que el usuario ya esta autenticado cuando se evalua el rol.
+    Route::middleware('rol.admin')->group(function () {
+        Route::post('/servidores',               [ServidorController::class, 'store']);
+        Route::patch('/servidores/{server_id}',  [ServidorController::class, 'update']);
+        Route::delete('/servidores/{server_id}', [ServidorController::class, 'destroy']);
+    });
 });

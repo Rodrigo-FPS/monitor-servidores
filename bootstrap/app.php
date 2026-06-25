@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\AdminAuth;
+use App\Http\Middleware\RolAdmin;
 use App\Http\Middleware\VerificarSesionEstricta; //Middleware de verificar sesiones en ../Middleware/VerificarSesionEstricta.php
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -21,6 +22,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'admin.auth' => AdminAuth::class,
+            'rol.admin'  => RolAdmin::class,
         ]);
         //Sin excepciones de CSRF: /api/admin/* se autentica por sesion y modifica
         //estado, por lo que DEBE validar el token CSRF. Los endpoints /api/heartbeat

@@ -14,10 +14,12 @@
                     <span class="badge bg-success"><i class="fas fa-circle me-1"></i>Encendido</span>
                     <span class="badge bg-danger"><i class="fas fa-circle me-1"></i>Apagado</span>
                     <span class="badge bg-warning text-dark"><i class="fas fa-circle me-1"></i>Indeterminado</span>
+                    @if(auth('admin')->user()?->esAdmin())
                     <button type="button" class="btn btn-light btn-sm ms-1"
                             data-bs-toggle="modal" data-bs-target="#modal-agregar">
                         <i class="fas fa-plus me-1"></i>Agregar
                     </button>
+                    @endif
                 </div>
             </div>
             <div class="card-body">
@@ -40,6 +42,8 @@
     </div>
 </div>
 
+@if(auth('admin')->user()?->esAdmin())
+<!-- Modales de gestion: solo visibles para el rol admin -->
 <!-- Modal: Agregar Servidor -->
 <div class="modal fade" id="modal-agregar" tabindex="-1" aria-labelledby="modal-agregar-label" aria-hidden="true">
     <div class="modal-dialog">
@@ -144,6 +148,7 @@
         </div>
     </div>
 </div>
+@endif
 @endsection
 
 @push('scripts')
