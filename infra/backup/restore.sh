@@ -8,26 +8,25 @@ DB_PORT="${DB_PORT:-5432}"
 # DB_DATABASE=monitor_fastapi y DBA_DB_USER=fastapi_dba.
 DB_DATABASE="${DB_DATABASE:-monitor_laravel}"
 DB_USER="${DBA_DB_USER:-laravel_dba}"
-export PGPASSWORD="${DBA_DB_PASS:-REEMPLAZAR}"
+# La contrasena se lee desde /root/.pgpass (600 root:root).
+# psql nunca recibe ni almacena la contrasena como argumento ni variable visible.
+export PGPASSFILE="${PGPASSFILE:-/root/.pgpass}"
 
 ARCHIVO="${1:-}"
 
 if [[ -z "$ARCHIVO" ]]; then
     echo "uso: $0 <archivo_backup.sql.gz>"
-    unset PGPASSWORD
     exit 1
 fi
 
 if [[ ! -f "$ARCHIVO" ]]; then
     echo "ERROR: archivo no encontrado: ${ARCHIVO}"
-    unset PGPASSWORD
     exit 1
 fi
 
 echo "verificando integridad del archivo..."
 if ! gunzip -t "$ARCHIVO"; then
     echo "ERROR: archivo corrupto"
-    unset PGPASSWORD
     exit 1
 fi
 
@@ -37,7 +36,6 @@ read -r -p "escribe CONFIRMAR para continuar: " RESP
 
 if [[ "$RESP" != "CONFIRMAR" ]]; then
     echo "restauracion cancelada"
-    unset PGPASSWORD
     exit 0
 fi
 
@@ -48,5 +46,4 @@ gunzip -c "$ARCHIVO" | psql \
     --username="$DB_USER" \
     --dbname="$DB_DATABASE"
 
-unset PGPASSWORD
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] restauracion completada"

@@ -424,11 +424,14 @@ El campo `rol` no es asignable en masa y cualquier valor invalido se normaliza a
 - El login tiene proteccion contra fuerza bruta: bloqueo temporal tras `LOGIN_MAX_INTENTOS` intentos fallidos en `LOGIN_VENTANA_MINUTOS` minutos.
 - El agente cliente corre bajo el usuario sin privilegios `monitor-agent` con el servicio systemd confinado (`NoNewPrivileges`, `ProtectSystem=strict`, `MemoryDenyWriteExecute`).
 - Registro de eventos: FastAPI escribe en `/var/log/monitor/` (`seguridad.log` con los rechazos de latidos/apagados y fallos de API key; `estados.log` con los cambios de estado). Laravel escribe en `storage/logs/` (`auditoria.log` con login y altas/ediciones/borrados de servidores; `seguridad.log` con logins fallidos, bloqueos por fuerza bruta y deteccion de secuestro de sesion). El historial de estados queda en logs, no en la base de datos.
+- Las contrasenas de los roles de backup y restauracion de PostgreSQL se almacenan en `/root/.pgpass` (600 root:root). `pg_dump` y `psql` las leen directamente desde ese archivo: nunca aparecen en variables de entorno del proceso, en el crontab ni en argumentos de linea de comandos.
 - Endurecimiento de produccion: `/docs`, `/redoc` y `/openapi.json` deshabilitados; nginx con rate-limit en `/login` y limite de conexiones por IP; cabeceras que revelan versiones ocultas (`server_tokens off`, `--no-server-header`, `X-Powered-By`).
 
 ## Respaldos
 
 Los scripts estan en `infra/backup/` y ya tienen permiso de ejecucion en el repositorio.
+Las contrasenas nunca aparecen en variables de entorno del proceso ni en argumentos
+de linea de comandos: `pg_dump` y `psql` las leen directamente desde `/root/.pgpass`.
 
 ### Estrategia
 
@@ -438,40 +441,63 @@ Los scripts estan en `infra/backup/` y ya tienen permiso de ejecucion en el repo
 - **Verificacion**: cada respaldo se valida con `gunzip -t` antes de declararlo exitoso.
 - **Almacenamiento**: `/var/backups/monitor` con permisos 700.
 
+### Crear el archivo de contrasenas de PostgreSQL
+
+Los cuatro roles de BD que usan los scripts (dos de respaldo, dos de restauracion) se
+registran en `/root/.pgpass`. PostgreSQL ignora el archivo si los permisos no son
+exactamente 600, por lo que el orden de los comandos importa:
+
+```bash
+sudo touch /root/.pgpass
+sudo chmod 600 /root/.pgpass
+sudo chown root:root /root/.pgpass
+```
+
+Agregar una linea por rol (sustituir cada `CONTRASENA` por el valor real):
+
+```
+127.0.0.1:5432:monitor_laravel:laravel_backup:CONTRASENA
+127.0.0.1:5432:monitor_fastapi:fastapi_backup:CONTRASENA
+127.0.0.1:5432:monitor_laravel:laravel_dba:CONTRASENA
+127.0.0.1:5432:monitor_fastapi:fastapi_dba:CONTRASENA
+```
+
+Los roles `laravel_dba` y `fastapi_dba` solo los usa `restore.sh`; los de backup
+son de solo lectura (`laravel_backup`, `fastapi_backup`).
+
 ### Configurar cron automatico
 
-Editar el crontab de root en el servidor central (`sudo crontab -e`) y agregar:
+El crontab no lleva ninguna contrasena. Editar con `sudo crontab -e` y agregar:
 
 ```
 # Respaldo diario de monitor_laravel a las 02:00
-0 2 * * * BACKUP_DB_PASS='contrasena_laravel_backup' bash /var/www/monitor/infra/backup/backup.sh >> /var/log/monitor/backup.log 2>&1
+0 2 * * * bash /var/www/monitor/infra/backup/backup.sh >> /var/log/monitor/backup.log 2>&1
 
 # Respaldo diario de monitor_fastapi a las 02:05
-5 2 * * * DB_DATABASE=monitor_fastapi BACKUP_DB_USER=fastapi_backup BACKUP_DB_PASS='contrasena_fastapi_backup' bash /var/www/monitor/infra/backup/backup.sh >> /var/log/monitor/backup.log 2>&1
+5 2 * * * DB_DATABASE=monitor_fastapi BACKUP_DB_USER=fastapi_backup bash /var/www/monitor/infra/backup/backup.sh >> /var/log/monitor/backup.log 2>&1
 ```
-
-Sustituir `contrasena_laravel_backup` y `contrasena_fastapi_backup` por las contrasenas reales de los roles `laravel_backup` y `fastapi_backup` de PostgreSQL.
 
 ### Uso manual
 
 ```bash
 # Respaldar monitor_laravel (por defecto)
-sudo BACKUP_DB_PASS='...' bash /var/www/monitor/infra/backup/backup.sh
+sudo bash /var/www/monitor/infra/backup/backup.sh
 
 # Respaldar monitor_fastapi
-sudo DB_DATABASE=monitor_fastapi BACKUP_DB_USER=fastapi_backup BACKUP_DB_PASS='...' bash /var/www/monitor/infra/backup/backup.sh
+sudo DB_DATABASE=monitor_fastapi BACKUP_DB_USER=fastapi_backup bash /var/www/monitor/infra/backup/backup.sh
 ```
 
 ### Restauracion
 
 ```bash
-sudo DBA_DB_PASS='...' bash /var/www/monitor/infra/backup/restore.sh /var/backups/monitor/monitor_2026-06-25_02-00-00.sql.gz
+sudo bash /var/www/monitor/infra/backup/restore.sh /var/backups/monitor/monitor_2026-06-25_02-00-00.sql.gz
 ```
 
-El script verifica la integridad del archivo y pide confirmacion explicita (`escribe CONFIRMAR para continuar`) antes de sobrescribir la base de datos.
+El script verifica la integridad del archivo y pide confirmacion explicita
+(`escribe CONFIRMAR para continuar`) antes de sobrescribir la base de datos.
 
 Para restaurar `monitor_fastapi` en lugar de `monitor_laravel`:
 
 ```bash
-sudo DB_DATABASE=monitor_fastapi DBA_DB_USER=fastapi_dba DBA_DB_PASS='...' bash /var/www/monitor/infra/backup/restore.sh /var/backups/monitor/monitor_2026-06-25_02-05-00.sql.gz
+sudo DB_DATABASE=monitor_fastapi DBA_DB_USER=fastapi_dba bash /var/www/monitor/infra/backup/restore.sh /var/backups/monitor/monitor_2026-06-25_02-05-00.sql.gz
 ```

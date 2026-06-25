@@ -8,7 +8,9 @@ DB_PORT="${DB_PORT:-5432}"
 # DB_DATABASE=monitor_fastapi y BACKUP_DB_USER=fastapi_backup.
 DB_DATABASE="${DB_DATABASE:-monitor_laravel}"
 DB_USER="${BACKUP_DB_USER:-laravel_backup}"
-export PGPASSWORD="${BACKUP_DB_PASS:-REEMPLAZAR}"
+# La contrasena se lee desde /root/.pgpass (600 root:root).
+# pg_dump nunca recibe ni almacena la contrasena como argumento ni variable visible.
+export PGPASSFILE="${PGPASSFILE:-/root/.pgpass}"
 
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/monitor}"
 RETENER_DIAS="${RETENER_DIAS:-30}"
@@ -31,8 +33,6 @@ pg_dump \
     --format=plain \
     "$DB_DATABASE" \
   | gzip -9 > "$ARCHIVO"
-
-unset PGPASSWORD
 
 #verificar integridad antes de declarar exito
 if ! gunzip -t "$ARCHIVO" 2>/dev/null; then
