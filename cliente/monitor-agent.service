@@ -8,7 +8,7 @@ Type=simple
 User=monitor-agent
 Group=monitor-agent
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/usr/bin/python3 /opt/monitor-agent/latidos.py
+ExecStart=/opt/monitor-agent/venv/bin/python3 /opt/monitor-agent/latidos.py
 Restart=always
 RestartSec=10
 TimeoutStopSec=30

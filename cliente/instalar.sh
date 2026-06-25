@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -e
 
 if [ "$(id -u)" != "0" ]; then
@@ -13,6 +12,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "=== instalando demonio de heartbeat ==="
 echo ""
 
+# Crear usuario del agente sin login
 if id "monitor-agent" &>/dev/null; then
     echo "[INFO] usuario monitor-agent ya existe"
 else
@@ -21,12 +21,21 @@ else
     echo "[OK] usuario monitor-agent creado"
 fi
 
-echo "[...] instalando dependencias Python (versiones fijadas)..."
-REQ="$DIR/requirements.txt"
-pip3 install -r "$REQ" -q --break-system-packages 2>/dev/null || pip3 install -r "$REQ" -q
-echo "[OK] dependencias listas"
+# Instalar python3-venv si no está disponible en el sistema
+if ! python3 -m venv --help > /dev/null 2>&1; then
+    echo "[...] instalando python3-venv..."
+    apt-get install -y python3-venv > /dev/null 2>&1
+    echo "[OK] python3-venv instalado"
+fi
 
 mkdir -p /opt/monitor-agent
+
+# Crear entorno virtual e instalar dependencias sin tocar el Python del sistema
+echo "[...] creando entorno virtual e instalando dependencias..."
+python3 -m venv /opt/monitor-agent/venv
+/opt/monitor-agent/venv/bin/pip install -q -r "$DIR/requirements.txt"
+echo "[OK] dependencias instaladas en /opt/monitor-agent/venv/"
+
 cp "$DIR/latidos.py" /opt/monitor-agent/latidos.py
 chmod 755 /opt/monitor-agent/latidos.py
 chown root:monitor-agent /opt/monitor-agent/latidos.py
@@ -37,7 +46,7 @@ chown monitor-agent:monitor-agent /etc/monitor-agent
 chmod 750 /etc/monitor-agent
 
 if [ -f /etc/monitor-agent/config.env ]; then
-    echo "[INFO] /etc/monitor-agent/config.env ya existe no se sobreescribe"
+    echo "[INFO] /etc/monitor-agent/config.env ya existe, no se sobreescribe"
 else
     cp "$DIR/config.env.example" /etc/monitor-agent/config.env
     chmod 600 /etc/monitor-agent/config.env
@@ -58,11 +67,10 @@ echo ""
 echo "arranca el servicio una vez para generar las claves Ed25519:"
 echo "  sudo systemctl start monitor-agent"
 echo ""
-echo "copia la clave publica que se imprime en el log:"
-echo "  sudo journalctl -u monitor-agent -n 20"
+echo "lee la clave publica generada:"
+echo "  sudo cat /etc/monitor-agent/public.key"
 echo ""
 echo "registra el servidor en el panel web pegando esa clave publica"
-echo "o leela directamente: sudo cat /etc/monitor-agent/public.key"
 echo ""
 echo "habilita el servicio para que arranque con el sistema:"
 echo "  sudo systemctl enable monitor-agent"
