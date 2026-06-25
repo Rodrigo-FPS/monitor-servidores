@@ -7,6 +7,7 @@ Wants=network-online.target
 Type=simple
 User=monitor-agent
 Group=monitor-agent
+Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/bin/python3 /opt/monitor-agent/latidos.py
 Restart=always
 RestartSec=10
@@ -14,6 +15,9 @@ TimeoutStopSec=30
 
 NoNewPrivileges=true
 ProtectSystem=strict
+# El agente escribe las claves Ed25519 en /etc/monitor-agent/ en el primer arranque.
+# ReadWritePaths abre escritura solo en ese directorio manteniendo el resto protegido.
+ReadWritePaths=/etc/monitor-agent
 PrivateTmp=true
 ProtectHome=true
 MemoryDenyWriteExecute=true

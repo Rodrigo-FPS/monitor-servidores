@@ -33,7 +33,7 @@ chown root:monitor-agent /opt/monitor-agent/latidos.py
 echo "[OK] latidos.py copiado a /opt/monitor-agent/"
 
 mkdir -p /etc/monitor-agent
-chown root:monitor-agent /etc/monitor-agent
+chown monitor-agent:monitor-agent /etc/monitor-agent
 chmod 750 /etc/monitor-agent
 
 if [ -f /etc/monitor-agent/config.env ]; then
