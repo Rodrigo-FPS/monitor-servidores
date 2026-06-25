@@ -48,24 +48,40 @@ Sistema de monitoreo de servidores en red local. Cada servidor cliente ejecuta u
 
 ## Instalacion del servidor central
 
-### 1. Clonar el repositorio
+### 1. Instalar paquetes del sistema (Debian/Ubuntu)
+
+```bash
+sudo apt-get update
+sudo apt-get install -y git curl openssl \
+    php8.4 php8.4-cli php8.4-fpm php8.4-pgsql php8.4-mbstring \
+    php8.4-xml php8.4-curl php8.4-intl php8.4-bcmath \
+    composer nginx postgresql python3 python3.13-venv
+```
+
+Debian instala `php8.4` sin crear `/usr/bin/php`; Composer lo necesita:
+
+```bash
+sudo ln -sf /usr/bin/php8.4 /usr/bin/php
+```
+
+### 2. Clonar el repositorio
 
 ```bash
 git clone https://github.com/Rodrigo-FPS/monitor-servidores.git /var/www/monitor
 cd /var/www/monitor
 ```
 
-### 2. Instalar dependencias de Laravel
+### 3. Instalar dependencias de Laravel
 
 ```bash
 composer install --no-dev --optimize-autoloader
 ```
 
 > La clave de la aplicacion (`APP_KEY`) se genera mas abajo, una vez creado el
-> `.env` (paso 3). En `APP_ENV=production`, `php artisan key:generate` pide
+> `.env` (paso 4). En `APP_ENV=production`, `php artisan key:generate` pide
 > confirmacion: usa `--force` para que no se cancele.
 
-### 3. Crear el .env de Laravel fuera del webroot
+### 4. Crear el .env de Laravel fuera del webroot
 
 ```bash
 sudo mkdir -p /etc/monitor-laravel
@@ -98,7 +114,7 @@ FASTAPI_URL=http://127.0.0.1:8000
 FASTAPI_KEY=       # misma clave que ADMIN_API_KEY del FastAPI
 ```
 
-### 4. Crear la base de datos de Laravel, sus tablas y el administrador
+### 5. Crear la base de datos de Laravel, sus tablas y el administrador
 
 Crear la base de datos y los tres roles (como superusuario de PostgreSQL). Editar
 antes las contrasenas `REEMPLAZAR_...` del script y poner en `DB_PASSWORD` del `.env`
@@ -120,9 +136,12 @@ sudo -u postgres psql -d monitor_laravel -f database/sql/schema.sql
 > de un rol con privilegio `CREATE` (no `laravel_app`).
 
 Crear el administrador con tinker (se conecta como `laravel_app`, que sí puede
-insertar):
+insertar). Tinker usa psysh, que necesita un directorio de cache accesible por
+`www-data` (Debian no lo crea automaticamente):
 
 ```bash
+sudo mkdir -p /var/www/.config/psysh
+sudo chown -R www-data:www-data /var/www/.config
 sudo -u www-data php artisan tinker
 ```
 
@@ -147,7 +166,7 @@ tabla.
 Ver la seccion **Roles y gestion de usuarios** mas abajo para crear cuentas de solo
 lectura y entender el modelo de roles.
 
-### 5. Instalar dependencias de FastAPI
+### 6. Instalar dependencias de FastAPI
 
 ```bash
 cd /var/www/monitor/servidor-central
@@ -156,7 +175,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 6. Crear el .env y la base de datos de FastAPI
+### 7. Crear el .env y la base de datos de FastAPI
 
 ```bash
 cp servidor-central/.env.example servidor-central/.env
@@ -166,7 +185,7 @@ Editar `servidor-central/.env`. `ADMIN_API_KEY` se gestiona via systemd, pero
 `DATABASE_URL` es obligatoria (la app no arranca sin ella):
 
 ```env
-DATABASE_URL=postgresql+asyncpg://fastapi_app:password-seguro@127.0.0.1:5432/monitor_fastapi
+DATABASE_URL=postgresql+asyncpg://fastapi_app:password-seguro@127.0.0.1:5432/monitor_fastapi?ssl=disable
 HEARTBEAT_INTERVALO_SEGUNDOS=30
 HEARTBEAT_TIMEOUT_SEGUNDOS=90
 VENTANA_ANTIREPLAY_SEGUNDOS=60
@@ -186,7 +205,7 @@ Los roles de FastAPI (`fastapi_app`, etc.) y los de Laravel (`laravel_app`, etc.
 tienen nombres distintos, por lo que ambos servicios pueden compartir el mismo
 PostgreSQL sin conflicto.
 
-### 7. Crear la credencial de API del FastAPI
+### 8. Crear la credencial de API del FastAPI
 
 Generar una clave aleatoria y guardarla como credencial de systemd:
 
@@ -199,7 +218,7 @@ sudo chmod 700 /etc/monitor-api
 
 Copiar el mismo valor en `FASTAPI_KEY` dentro de `/etc/monitor-laravel/.env`.
 
-### 8. Instalar el servicio systemd del FastAPI
+### 9. Instalar el servicio systemd del FastAPI
 
 Crear el usuario de sistema dedicado (sin login) con el que corre el backend:
 
@@ -224,7 +243,7 @@ Verificar:
 sudo systemctl status monitor-fastapi
 ```
 
-### 9. Configurar nginx
+### 10. Configurar nginx
 
 Copiar y adaptar la plantilla incluida:
 
