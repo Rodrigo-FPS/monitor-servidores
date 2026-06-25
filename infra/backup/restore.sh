@@ -4,8 +4,10 @@ set -euo pipefail
 
 DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-5432}"
-DB_DATABASE="${DB_DATABASE:-monitor_servidores}"
-DB_USER="${DBA_DB_USER:-monitor_dba}"
+# Por defecto restaura la BD de Laravel. Para la de FastAPI exporta
+# DB_DATABASE=monitor_fastapi y DBA_DB_USER=fastapi_dba.
+DB_DATABASE="${DB_DATABASE:-monitor_laravel}"
+DB_USER="${DBA_DB_USER:-laravel_dba}"
 export PGPASSWORD="${DBA_DB_PASS:-REEMPLAZAR}"
 
 ARCHIVO="${1:-}"

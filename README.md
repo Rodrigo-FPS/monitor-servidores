@@ -83,7 +83,7 @@ DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
 DB_DATABASE=monitor_laravel
-DB_USERNAME=monitor_app
+DB_USERNAME=laravel_app
 DB_PASSWORD=password-seguro
 
 FASTAPI_URL=http://127.0.0.1:8000
@@ -94,24 +94,24 @@ FASTAPI_KEY=       # misma clave que ADMIN_API_KEY del FastAPI
 
 Crear la base de datos y los tres roles (como superusuario de PostgreSQL). Editar
 antes las contrasenas `REEMPLAZAR_...` del script y poner en `DB_PASSWORD` del `.env`
-la misma contrasena que asignes a `monitor_app`:
+la misma contrasena que asignes a `laravel_app`:
 
 ```bash
 sudo -u postgres psql -f database/sql/usuarios_roles.sql
 ```
 
 Crear las tablas con el script de esquema. Debe ejecutarse con un rol que tenga
-privilegio `CREATE`: el rol de la aplicacion (`monitor_app`) sigue minimos privilegios
-y NO puede crear tablas, por eso se usa el superusuario o `monitor_dba`:
+privilegio `CREATE`: el rol de la aplicacion (`laravel_app`) sigue minimos privilegios
+y NO puede crear tablas, por eso se usa el superusuario o `laravel_dba`:
 
 ```bash
 sudo -u postgres psql -d monitor_laravel -f database/sql/schema.sql
 ```
 
 > Alternativa solo para desarrollo: `php artisan migrate`, ejecutado con credenciales
-> de un rol con privilegio `CREATE` (no `monitor_app`).
+> de un rol con privilegio `CREATE` (no `laravel_app`).
 
-Crear el administrador con tinker (se conecta como `monitor_app`, que sí puede
+Crear el administrador con tinker (se conecta como `laravel_app`, que sí puede
 insertar):
 
 ```bash
@@ -158,13 +158,13 @@ Editar `servidor-central/.env`. `ADMIN_API_KEY` se gestiona via systemd, pero
 `DATABASE_URL` es obligatoria (la app no arranca sin ella):
 
 ```env
-DATABASE_URL=postgresql+asyncpg://monitor_app:password-seguro@127.0.0.1:5432/monitor_fastapi
+DATABASE_URL=postgresql+asyncpg://fastapi_app:password-seguro@127.0.0.1:5432/monitor_fastapi
 HEARTBEAT_INTERVALO_SEGUNDOS=30
 HEARTBEAT_TIMEOUT_SEGUNDOS=90
 VENTANA_ANTIREPLAY_SEGUNDOS=60
 ```
 
-Crear la base de datos, los roles y las tablas de FastAPI. Como `monitor_app` no tiene
+Crear la base de datos, los roles y las tablas de FastAPI. Como `fastapi_app` no tiene
 privilegio `CREATE`, el esquema se aplica con el superusuario (la app ya no crea
 tablas en el arranque):
 
@@ -174,10 +174,9 @@ sudo -u postgres psql -f servidor-central/db/usuarios_roles.sql
 sudo -u postgres psql -d monitor_fastapi -f servidor-central/db/schema.sql
 ```
 
-> Nota: si Laravel y FastAPI comparten el mismo PostgreSQL, los dos scripts
-> `usuarios_roles.sql` crean roles con los mismos nombres (`monitor_app`, etc.).
-> Ejecuta el segundo sin recrear los roles ya existentes, o usa nombres de rol
-> distintos por base de datos.
+Los roles de FastAPI (`fastapi_app`, etc.) y los de Laravel (`laravel_app`, etc.)
+tienen nombres distintos, por lo que ambos servicios pueden compartir el mismo
+PostgreSQL sin conflicto.
 
 ### 7. Crear la credencial de API del FastAPI
 
