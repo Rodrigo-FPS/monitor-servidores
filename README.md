@@ -291,50 +291,48 @@ sudo systemctl status monitor-fastapi
 
 ### 10. Configurar nginx
 
-#### Certificado SSL
-
-El sistema necesita HTTPS. La opcion depende del entorno:
-
-**Opcion A — Red local / laboratorio (sin dominio, solo IP)**
-
-Generar un certificado autofirmado para la IP del servidor. El navegador mostrara
-una advertencia la primera vez; se acepta una sola vez y no vuelve a aparecer:
+Copiar la plantilla de nginx y activarla. La plantilla ya usa `server_name _;`
+(acepta conexiones a cualquier IP), por lo que no necesita editarse:
 
 ```bash
 sudo mkdir -p /etc/ssl/monitor
-sudo openssl req -x509 -nodes -newkey rsa:4096 -days 365 \
-    -keyout /etc/ssl/monitor/privkey.pem \
-    -out    /etc/ssl/monitor/fullchain.pem \
-    -subj   "/CN=192.168.10.15/O=Monitor/C=MX" \
-    -addext "subjectAltName=IP:192.168.10.15"
-sudo chmod 600 /etc/ssl/monitor/privkey.pem
-sudo chmod 644 /etc/ssl/monitor/fullchain.pem
+sudo cp infra/nginx/monitor.conf /etc/nginx/sites-available/monitor
+sudo ln -s /etc/nginx/sites-available/monitor /etc/nginx/sites-enabled/
 ```
 
-Sustituir `192.168.10.15` por la IP real del servidor en ambas ocurrencias.
+Luego ejecutar el script de configuracion de IP. Detecta automaticamente la IP
+del servidor, genera el certificado SSL autofirmado, actualiza `APP_URL` en el
+`.env` de Laravel y recarga nginx, todo en un solo paso:
 
-**Opcion B — Con dominio publico**
+```bash
+sudo bash infra/cambiar-ip.sh
+```
 
-Obtener un certificado con Certbot (Let's Encrypt):
+El navegador mostrara una advertencia de certificado la primera vez porque es
+autofirmado; aceptarla una vez es suficiente. Si cambias de red, vuelve a
+ejecutar el mismo script y actualiza `SERVER_URL` en cada agente cliente.
+
+**Si tienes dominio publico (opcional):**
+Obtener un certificado con Certbot antes de copiar la config de nginx:
 
 ```bash
 sudo apt-get install -y certbot python3-certbot-nginx
 sudo certbot certonly --nginx -d tu-dominio.com
 ```
 
-En la plantilla nginx (`infra/nginx/monitor.conf`) descomenta las lineas de
-`/etc/letsencrypt/live/...` y comenta las de `/etc/ssl/monitor/...`.
+Luego editar `infra/nginx/monitor.conf`, comentar las lineas de
+`/etc/ssl/monitor/...` y descomentar las de `/etc/letsencrypt/live/...`.
+Sustituir `server_name _;` por el FQDN y ejecutar los comandos de arriba.
 
-#### Instalar la configuracion de nginx
-
-Editar `infra/nginx/monitor.conf` y reemplazar `TU_IP_O_DOMINIO` por la IP o
-el nombre de dominio real. Luego:
+### 11. Aplicar el indice de base de datos de FastAPI
 
 ```bash
-sudo cp infra/nginx/monitor.conf /etc/nginx/sites-available/monitor
-sudo ln -s /etc/nginx/sites-available/monitor /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
+sudo -u postgres psql -d monitor_fastapi -c \
+  "CREATE INDEX IF NOT EXISTS idx_servidores_hostname ON servidores (hostname);"
 ```
+
+Este indice optimiza la consulta de listado de servidores (que ordena por
+`hostname`). El comando es idempotente: no falla si el indice ya existe.
 
 ---
 
