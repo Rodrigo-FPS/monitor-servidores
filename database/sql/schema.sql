@@ -2,15 +2,15 @@
 --motor PostgreSQL 15+
 --encoding UTF-8
 
-CREATE TABLE IF NOT EXISTS admins (
+CREATE TABLE IF NOT EXISTS usuarios (
     id             BIGSERIAL    PRIMARY KEY,
     username       VARCHAR(64)  NOT NULL UNIQUE,
     password       VARCHAR(255) NOT NULL,   --hash bcrypt cost >= 12
-    rol            VARCHAR(20)  NOT NULL DEFAULT 'usuario',  --minimo privilegio por defecto
+    rol            VARCHAR(20)  NOT NULL DEFAULT 'observador',  --minimo privilegio por defecto
     remember_token VARCHAR(100) DEFAULT NULL,
     created_at     TIMESTAMPTZ  DEFAULT NULL,
     updated_at     TIMESTAMPTZ  DEFAULT NULL,
-    CONSTRAINT chk_admins_rol CHECK (rol IN ('admin','usuario'))
+    CONSTRAINT chk_usuarios_rol CHECK (rol IN ('admin','observador'))
 );
 
 CREATE TABLE IF NOT EXISTS intentos_login_fallidos (

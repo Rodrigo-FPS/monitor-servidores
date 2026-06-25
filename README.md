@@ -98,21 +98,22 @@ sudo -u www-data php artisan tinker
 ```
 
 Dentro de tinker, crear el administrador. **El rol debe fijarse explicitamente**:
-el campo `rol` no es asignable en masa y por defecto vale `usuario` (minimo
-privilegio), por lo que `Admin::create([...])` SIN fijar el rol crea una cuenta de
-solo lectura. Para crear un administrador:
+el campo `rol` no es asignable en masa y por defecto vale `observador` (minimo
+privilegio), por lo que crear la cuenta SIN fijar el rol da una cuenta de solo
+lectura. Para crear un administrador:
 
 ```php
-$admin = new App\Models\Admin();
-$admin->username = 'admin';
-$admin->password = bcrypt('contrasena-segura');
-$admin->rol      = 'admin';
-$admin->save();
+$u = new App\Models\Usuario();
+$u->username = 'admin';
+$u->password = bcrypt('contrasena-segura');
+$u->rol      = 'admin';
+$u->save();
 exit
 ```
 
-El modelo `Admin` solo tiene los campos `username`, `password` y `rol` (el hash se
-almacena con bcrypt). No uses `name` ni `email`: no existen en la tabla.
+El modelo `Usuario` (tabla `usuarios`) solo tiene los campos `username`, `password`
+y `rol` (el hash se almacena con bcrypt). No uses `name` ni `email`: no existen en la
+tabla.
 
 Ver la seccion **Roles y gestion de usuarios** mas abajo para crear cuentas de solo
 lectura y entender el modelo de roles.
@@ -256,16 +257,17 @@ La clave privada nunca se transmite ni se almacena fuera del servidor cliente.
 
 ## Roles y gestion de usuarios
 
-El panel define dos roles de aplicacion (distintos de los roles de PostgreSQL):
+Las cuentas viven en la tabla `usuarios` (modelo `App\Models\Usuario`). Cada cuenta
+tiene un `rol` de aplicacion (distinto de los roles de PostgreSQL):
 
 | Rol | Puede ver el estado | Puede agregar/editar/eliminar servidores |
 |---|---|---|
-| `admin`   | Si | Si |
-| `usuario` | Si | No (solo lectura) |
+| `admin`      | Si | Si |
+| `observador` | Si | No (solo lectura) |
 
 La autorizacion se aplica en el servidor (middleware `rol.admin` + revalidacion en el
 controlador, ambos fallan cerrado). Ocultar botones en la interfaz es solo cosmetico:
-un `usuario` que fuerce una peticion de escritura recibe `403`.
+un `observador` que fuerce una peticion de escritura recibe `403`.
 
 ### No hay registro de usuarios (limitacion del proyecto)
 
@@ -290,21 +292,21 @@ En el servidor, con `sudo -u www-data php artisan tinker`:
 
 ```php
 // Administrador (control total) — el rol debe fijarse explicitamente
-$a = new App\Models\Admin();
+$a = new App\Models\Usuario();
 $a->username = 'admin';
 $a->password = bcrypt('contrasena-larga-y-unica');
 $a->rol      = 'admin';
 $a->save();
 
-// Usuario de solo lectura — el rol por defecto ya es 'usuario'
-$u = new App\Models\Admin();
-$u->username = 'lector';
-$u->password = bcrypt('otra-contrasena-larga');
-$u->save();
+// Observador (solo lectura) — el rol por defecto ya es 'observador'
+$o = new App\Models\Usuario();
+$o->username = 'lector';
+$o->password = bcrypt('otra-contrasena-larga');
+$o->save();
 ```
 
 El campo `rol` no es asignable en masa y cualquier valor invalido se normaliza a
-`usuario` (minimo privilegio por defecto).
+`observador` (minimo privilegio por defecto).
 
 ## Estructura del repositorio
 
@@ -313,7 +315,7 @@ El campo `rol` no es asignable en masa y cualquier valor invalido se normaliza a
 |-- bootstrap/app.php          Laravel: configura el path del .env fuera del webroot
 |-- app/                       Controladores, middlewares y modelos de Laravel
 |-- resources/views/           Vistas Blade del panel web
-|-- routes/                    Rutas web y API de Laravel
+|-- routes/                    Rutas web de Laravel
 |-- public/                    Webroot: assets JS/CSS/fuentes (servidos localmente)
 |-- servidor-central/          Backend FastAPI
 |   |-- main.py                Punto de entrada de la aplicacion

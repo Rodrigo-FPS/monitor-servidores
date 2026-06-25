@@ -2,32 +2,26 @@
 
 return [
     'defaults' => [
-        'guard'     => 'admin',
-        'passwords' => 'admins',
+        'guard' => 'admin',
     ],
 
+    // El guard 'admin' identifica la sesion del panel de administracion. Autentica a
+    // todas las cuentas del panel; el nivel de acceso lo determina la columna 'rol'
+    // (admin u observador), no el guard.
     'guards' => [
         'admin' => [
             'driver'   => 'session',
-            'provider' => 'admins',
+            'provider' => 'usuarios',
         ],
     ],
 
     'providers' => [
-        'admins' => [
+        'usuarios' => [
             'driver' => 'eloquent',
-            'model'  => App\Models\Admin::class,
+            'model'  => App\Models\Usuario::class,
         ],
     ],
 
-    'passwords' => [
-        'admins' => [
-            'provider' => 'admins',
-            'table'    => 'password_reset_tokens',
-            'expire'   => 60,
-            'throttle' => 60,
-        ],
-    ],
-
-    'password_timeout' => 10800,
+    // No hay recuperacion de contrasena (el alta de cuentas es manual por consola),
+    // por lo que no se define ningun broker de 'passwords'.
 ];
