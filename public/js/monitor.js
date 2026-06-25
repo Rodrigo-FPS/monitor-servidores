@@ -57,11 +57,13 @@ function renderizarTablaDesdeJson(servers) {
             html += '<td>';
             if (ES_ADMIN) {
                 html += '<button class="btn btn-sm btn-outline-primary me-1 btn-editar-servidor" ' +
-                        'data-server-id="' + escapeHtml(s.server_id) + '" data-ip="' + escapeHtml(s.ip) + '" title="Editar">' +
-                        '<i class="fas fa-edit"></i></button>';
+                        'data-server-id="' + escapeHtml(s.server_id) + '" data-ip="' + escapeHtml(s.ip) + '" ' +
+                        'aria-label="Editar ' + escapeHtml(s.hostname) + '">' +
+                        '<i class="fas fa-edit" aria-hidden="true"></i></button>';
                 html += '<button class="btn btn-sm btn-outline-danger btn-eliminar-servidor" ' +
-                        'data-server-id="' + escapeHtml(s.server_id) + '" title="Eliminar">' +
-                        '<i class="fas fa-trash"></i></button>';
+                        'data-server-id="' + escapeHtml(s.server_id) + '" ' +
+                        'aria-label="Eliminar ' + escapeHtml(s.hostname) + '">' +
+                        '<i class="fas fa-trash" aria-hidden="true"></i></button>';
             } else {
                 html += '<span class="text-muted small">Solo lectura</span>';
             }
@@ -103,6 +105,31 @@ function modalInstance(id) {
     return bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
 }
 
+function mostrarToast(mensaje) {
+    var contenedor = document.getElementById('toast-contenedor');
+    if (!contenedor) {
+        contenedor = document.createElement('div');
+        contenedor.id = 'toast-contenedor';
+        contenedor.className = 'position-fixed bottom-0 end-0 p-3';
+        contenedor.style.zIndex = '1100';
+        contenedor.setAttribute('aria-live', 'polite');
+        contenedor.setAttribute('aria-atomic', 'true');
+        document.body.appendChild(contenedor);
+    }
+    var id = 'toast-' + Date.now();
+    contenedor.insertAdjacentHTML('beforeend',
+        '<div id="' + id + '" class="toast align-items-center text-bg-success border-0" role="status">' +
+        '<div class="d-flex"><div class="toast-body">' +
+        '<i class="fas fa-check-circle me-2" aria-hidden="true"></i>' + escapeHtml(mensaje) +
+        '</div><button type="button" class="btn-close btn-close-white me-2 m-auto" ' +
+        'data-bs-dismiss="toast" aria-label="Cerrar"></button></div></div>'
+    );
+    var el = document.getElementById(id);
+    var t = new bootstrap.Toast(el, { delay: 3000 });
+    t.show();
+    el.addEventListener('hidden.bs.toast', function() { el.remove(); });
+}
+
 $(document).ready(function() {
     // Enviar el token CSRF en toda peticion AJAX que modifique estado.
     // El token se publica en <meta name="csrf-token"> dentro de layouts/app.blade.php.
@@ -142,7 +169,7 @@ $(document).ready(function() {
             contentType: 'application/json',
             data: JSON.stringify({ ip: ip }),
             timeout: 5000,
-            success:  function()    { modalInstance('modal-editar').hide(); actualizarTabla(); },
+            success:  function()    { modalInstance('modal-editar').hide(); actualizarTabla(); mostrarToast('Servidor actualizado correctamente.'); },
             error:    function(xhr) {
                 var msg = 'Error al actualizar el servidor.';
                 try { msg = JSON.parse(xhr.responseText).error || msg; } catch(e) {}
@@ -169,7 +196,7 @@ $(document).ready(function() {
             url: '/api/admin/servidores/' + encodeURIComponent(id),
             type: 'DELETE',
             timeout: 5000,
-            success:  function()    { modalInstance('modal-eliminar').hide(); actualizarTabla(); },
+            success:  function()    { modalInstance('modal-eliminar').hide(); actualizarTabla(); mostrarToast('Servidor eliminado correctamente.'); },
             error:    function(xhr) {
                 var msg = 'Error al eliminar el servidor.';
                 try { msg = JSON.parse(xhr.responseText).error || msg; } catch(e) {}
@@ -210,7 +237,7 @@ $(document).ready(function() {
             contentType: 'application/json',
             data: JSON.stringify({ server_id: id, hostname: hostname, ip: ip, clave_publica: clavePub }),
             timeout: 5000,
-            success:  function()    { modalInstance('modal-agregar').hide(); actualizarTabla(); },
+            success:  function()    { modalInstance('modal-agregar').hide(); actualizarTabla(); mostrarToast('Servidor agregado correctamente.'); },
             error:    function(xhr) {
                 var msg = 'Error al agregar el servidor.';
                 try { msg = JSON.parse(xhr.responseText).error || msg; } catch(e) {}

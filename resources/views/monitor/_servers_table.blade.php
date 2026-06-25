@@ -1,12 +1,13 @@
 <div class="table-responsive">
     <table class="table table-bordered table-hover align-middle" id="servers-table">
+        <caption class="visually-hidden">Lista de servidores monitoreados con su estado actual y último latido</caption>
         <thead class="table-dark">
             <tr>
-                <th><i class="fas fa-server me-1"></i>Hostname</th>
-                <th><i class="fas fa-network-wired me-1"></i>Direccion IP</th>
-                <th><i class="fas fa-info-circle me-1"></i>Estado</th>
-                <th><i class="fas fa-heartbeat me-1"></i>Ultimo Latido</th>
-                <th><i class="fas fa-cogs me-1"></i>Acciones</th>
+                <th scope="col"><i class="fas fa-server me-1" aria-hidden="true"></i>Hostname</th>
+                <th scope="col"><i class="fas fa-network-wired me-1" aria-hidden="true"></i>Dirección IP</th>
+                <th scope="col"><i class="fas fa-info-circle me-1" aria-hidden="true"></i>Estado</th>
+                <th scope="col"><i class="fas fa-heartbeat me-1" aria-hidden="true"></i>Último Latido</th>
+                <th scope="col"><i class="fas fa-cogs me-1" aria-hidden="true"></i>Acciones</th>
             </tr>
         </thead>
         <tbody id="servers-table-body">
@@ -20,15 +21,15 @@
                         @endphp
                         @if($status == 'encendido')
                             <span class="badge bg-success">
-                                <i class="fas fa-check-circle me-1"></i>Encendido
+                                <i class="fas fa-check-circle me-1" aria-hidden="true"></i>Encendido
                             </span>
                         @elseif($status == 'apagado')
                             <span class="badge bg-danger">
-                                <i class="fas fa-power-off me-1"></i>Apagado
+                                <i class="fas fa-power-off me-1" aria-hidden="true"></i>Apagado
                             </span>
                         @else
                             <span class="badge bg-warning text-dark">
-                                <i class="fas fa-question-circle me-1"></i>Indeterminado
+                                <i class="fas fa-question-circle me-1" aria-hidden="true"></i>Indeterminado
                             </span>
                         @endif
                     </td>
@@ -45,15 +46,27 @@
                         @endif
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-outline-secondary" disabled>
-                            <i class="fas fa-eye"></i> Ver
-                        </button>
+                        @if(auth('admin')->user()?->esAdmin())
+                            <button class="btn btn-sm btn-outline-primary me-1 btn-editar-servidor"
+                                    data-server-id="{{ $server->server_id }}"
+                                    data-ip="{{ $server->ip ?? $server->ip_address ?? '' }}"
+                                    aria-label="Editar {{ $server->hostname }}">
+                                <i class="fas fa-edit" aria-hidden="true"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger btn-eliminar-servidor"
+                                    data-server-id="{{ $server->server_id }}"
+                                    aria-label="Eliminar {{ $server->hostname }}">
+                                <i class="fas fa-trash" aria-hidden="true"></i>
+                            </button>
+                        @else
+                            <span class="text-muted small">Solo lectura</span>
+                        @endif
                     </td>
                 </tr>
             @empty
                 <tr>
                     <td colspan="5" class="text-center text-muted py-4">
-                        <i class="fas fa-database me-2"></i>
+                        <i class="fas fa-database me-2" aria-hidden="true"></i>
                         No hay servidores registrados en el sistema.
                     </td>
                 </tr>

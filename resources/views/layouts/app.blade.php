@@ -15,12 +15,14 @@
 </head>
 <body>
     <!-- Barra de navegacion -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow" aria-label="Navegación principal">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ route('monitor.index') }}">
-                <i class="fas fa-server me-2"></i>{{ config('app.name') }}
+                <i class="fas fa-server me-2" aria-hidden="true"></i>{{ config('app.name') }}
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Abrir menú de navegación">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -28,7 +30,7 @@
                     @auth('admin')
                         <li class="nav-item">
                             <span class="navbar-text me-3">
-                                <i class="fas fa-user-circle me-1"></i>
+                                <i class="fas fa-user-circle me-1" aria-hidden="true"></i>
                                 {{ auth('admin')->user()->username }}
                             </span>
                         </li>
@@ -36,7 +38,7 @@
                             <form action="{{ route('logout') }}" method="POST" class="d-inline">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-light btn-sm">
-                                    <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesion
+                                    <i class="fas fa-sign-out-alt me-1" aria-hidden="true"></i>Cerrar Sesión
                                 </button>
                             </form>
                         </li>
@@ -46,9 +48,9 @@
         </div>
     </nav>
 
-    <div class="container-fluid mt-4">
+    <main class="container-fluid mt-4">
         @yield('content')
-    </div>
+    </main>
 
     <script src="{{ asset('js/jquery.min.js') }}"></script>
     <script src="{{ asset('js/bootstrap.bundle.min.js') }}"></script>
