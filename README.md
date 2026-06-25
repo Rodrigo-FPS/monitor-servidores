@@ -41,12 +41,8 @@ Sistema de monitoreo de servidores en red local. Cada servidor cliente ejecuta u
 | Componente | Version minima |
 |---|---|
 | Python | 3.11 |
+| python3-venv | incluido en Python 3.11+ |
 | systemd | 232+ |
-
-> `python3-venv` es el unico paquete extra que puede hacer falta; el script
-> `instalar.sh` lo instala automaticamente si no esta presente. No se requiere
-> pip instalado en el sistema: las dependencias van en un entorno virtual
-> aislado en `/opt/monitor-agent/venv/`.
 
 ---
 
@@ -342,17 +338,24 @@ Este indice optimiza la consulta de listado de servidores (que ordena por
 
 ## Instalacion del agente cliente
 
-Ejecutar en cada servidor que se quiera monitorear como root:
+Ejecutar en cada servidor que se quiera monitorear como root.
+
+### 1. Instalar paquetes del sistema (Debian/Ubuntu)
+
+```bash
+sudo apt-get update
+sudo apt-get install -y python3 python3-venv
+```
+
+### 2. Instalar el agente
 
 ```bash
 sudo bash cliente/instalar.sh
 ```
 
-El script es autocontenido: crea el usuario `monitor-agent`, instala
-`python3-venv` si no existe, crea un entorno virtual en
+El script crea el usuario `monitor-agent`, crea un entorno virtual en
 `/opt/monitor-agent/venv/`, instala las dependencias Python dentro de ese
-entorno y registra el servicio systemd. No requiere pip instalado en el
-sistema ni configuracion previa.
+entorno y registra el servicio systemd.
 
 ### Configurar el agente
 

@@ -21,13 +21,6 @@ else
     echo "[OK] usuario monitor-agent creado"
 fi
 
-# Instalar python3-venv si no está disponible en el sistema
-if ! python3 -m venv --help > /dev/null 2>&1; then
-    echo "[...] instalando python3-venv..."
-    apt-get install -y python3-venv > /dev/null 2>&1
-    echo "[OK] python3-venv instalado"
-fi
-
 mkdir -p /opt/monitor-agent
 
 # Crear entorno virtual e instalar dependencias sin tocar el Python del sistema
