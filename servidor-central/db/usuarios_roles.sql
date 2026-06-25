@@ -2,11 +2,7 @@
 --ejecutar como superusuario antes de desplegar FastAPI
 --principio de minimos privilegios aplicado a los tres roles
 
-SELECT 'CREATE DATABASE monitor_fastapi
-    WITH ENCODING=''UTF8''
-    LC_COLLATE=''es_ES.UTF-8''
-    LC_CTYPE=''es_ES.UTF-8''
-    TEMPLATE=template0'
+SELECT 'CREATE DATABASE monitor_fastapi WITH ENCODING ''UTF8'''
 WHERE NOT EXISTS (
     SELECT FROM pg_database WHERE datname = 'monitor_fastapi'
 )\gexec
