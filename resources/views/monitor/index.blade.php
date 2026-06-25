@@ -28,6 +28,7 @@
                 <div id="servers-table-container">
                     @include('monitor._servers_table')
                 </div>
+                <div id="paginacion-container" aria-live="polite"></div>
             </div>
             <div class="card-footer bg-light text-muted d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div>

@@ -31,28 +31,27 @@ class MonitorController extends Controller
      *
      * @return array
      */
-    private function getServersFromFastAPI()
+    private function getServersFromFastAPI(): array
     {
         try {
-            $resultado = $this->api->listarServidores();
-            
+            $resultado = $this->api->listarServidores(pagina: 1, porPagina: 25);
+
             if ($resultado['status'] === 200) {
-                $data = $resultado['body'];
-                
-                // FastAPI devuelve un array de objetos, lo mapeamos a un formato consistente
-                return array_map(function($item) {
+                $items = $resultado['body']['servidores'] ?? [];
+                return array_map(function ($item) {
                     return (object) [
-                        'hostname' => $item['hostname'] ?? 'Desconocido',
-                        'ip' => $item['ip'] ?? '0.0.0.0',
-                        'status' => $item['estado'] ?? 'indeterminado',
+                        'server_id'    => $item['server_id']    ?? '',
+                        'hostname'     => $item['hostname']     ?? 'Desconocido',
+                        'ip'           => $item['ip']           ?? '0.0.0.0',
+                        'status'       => $item['estado']       ?? 'indeterminado',
                         'ultimo_visto' => $item['ultimo_visto'] ?? null,
                     ];
-                }, $data);
+                }, $items);
             }
-            
+
             Log::warning('FastAPI respondio con error: ' . $resultado['status']);
             return [];
-            
+
         } catch (\Exception $e) {
             Log::error('Error al conectar con FastAPI: ' . $e->getMessage());
             return [];

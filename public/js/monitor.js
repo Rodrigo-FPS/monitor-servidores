@@ -4,6 +4,10 @@
 var ES_ADMIN = document.querySelector('meta[name="es-admin"]')
     && document.querySelector('meta[name="es-admin"]').getAttribute('content') === 'true';
 
+var paginaActual  = 1;
+var totalPaginas  = 1;
+var POR_PAGINA    = 25;
+
 function escapeHtml(unsafe) {
     if (!unsafe) return '';
     return String(unsafe)
@@ -83,20 +87,74 @@ function actualizarHoraUltimaActualizacion() {
         String(now.getSeconds()).padStart(2, '0');
 }
 
+function renderizarPaginacion(pagina, paginas, total) {
+    var contenedor = document.getElementById('paginacion-container');
+    if (!contenedor) return;
+
+    if (paginas <= 1) {
+        contenedor.innerHTML = '';
+        return;
+    }
+
+    var label = total + ' servidor' + (total !== 1 ? 'es' : '');
+    var html  = '<nav class="d-flex flex-wrap justify-content-between align-items-center mt-2 gap-2" ' +
+                'aria-label="Paginación de servidores">' +
+                '<small class="text-muted">' + label + ' en total</small>' +
+                '<ul class="pagination pagination-sm mb-0">';
+
+    html += '<li class="page-item' + (pagina <= 1 ? ' disabled' : '') + '">' +
+            '<button class="page-link" id="btn-pag-ant"' + (pagina <= 1 ? ' disabled aria-disabled="true"' : '') +
+            ' aria-label="Página anterior">‹ Anterior</button></li>';
+
+    html += '<li class="page-item disabled" aria-current="page">' +
+            '<span class="page-link">' + pagina + ' / ' + paginas + '</span></li>';
+
+    html += '<li class="page-item' + (pagina >= paginas ? ' disabled' : '') + '">' +
+            '<button class="page-link" id="btn-pag-sig"' + (pagina >= paginas ? ' disabled aria-disabled="true"' : '') +
+            ' aria-label="Página siguiente">Siguiente ›</button></li>';
+
+    html += '</ul></nav>';
+    contenedor.innerHTML = html;
+
+    if (pagina > 1) {
+        document.getElementById('btn-pag-ant').addEventListener('click', function() {
+            paginaActual--;
+            actualizarTabla();
+        });
+    }
+    if (pagina < paginas) {
+        document.getElementById('btn-pag-sig').addEventListener('click', function() {
+            paginaActual++;
+            actualizarTabla();
+        });
+    }
+}
+
 function actualizarTabla() {
     $.ajax({
         url: '/api/admin/servidores',
         type: 'GET',
+        data: { pagina: paginaActual, por_pagina: POR_PAGINA },
         timeout: 5000,
         success: function(data) {
-            if (!Array.isArray(data)) return;
-            renderizarTablaDesdeJson(data);
+            if (!data || !Array.isArray(data.servidores)) return;
+
+            // Si la pagina actual ya no existe (ej: se borraron servidores), volver a la ultima
+            if (paginaActual > data.paginas && data.paginas > 0) {
+                paginaActual = data.paginas;
+                actualizarTabla();
+                return;
+            }
+
+            totalPaginas = data.paginas || 1;
+            renderizarTablaDesdeJson(data.servidores);
+            renderizarPaginacion(paginaActual, totalPaginas, data.total);
             actualizarHoraUltimaActualizacion();
         },
         error: function() {
             document.getElementById('servers-table-body').innerHTML =
                 '<tr><td colspan="5" class="text-center text-danger py-3">' +
-                '<i class="fas fa-exclamation-triangle me-2"></i>Error de conexión con el motor de estados.</td></tr>';
+                '<i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>Error de conexión con el motor de estados.</td></tr>';
         }
     });
 }

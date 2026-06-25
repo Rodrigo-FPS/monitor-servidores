@@ -1,10 +1,11 @@
+import math
 import re
 import ipaddress
 
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from db.database import obtener_sesion
 from db.models import Servidor
@@ -15,6 +16,9 @@ router = APIRouter()
 _PATRON_SERVER_ID = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 _PATRON_HOSTNAME  = re.compile(r"^[a-zA-Z0-9._-]{1,255}$")
 
+_POR_PAGINA_DEFECTO = 25
+_POR_PAGINA_MAX     = 200
+
 
 def _es_ip_valida(ip: str) -> bool:
     try:
@@ -24,9 +28,21 @@ def _es_ip_valida(ip: str) -> bool:
         return False
 
 
-async def listar_servidores(sesion: AsyncSession) -> list:
-    resultado = await sesion.execute(select(Servidor).order_by(Servidor.hostname))
-    return list(resultado.scalars().all())
+async def listar_servidores(sesion: AsyncSession, pagina: int = 1, por_pagina: int = _POR_PAGINA_DEFECTO) -> dict:
+    total = await sesion.scalar(select(func.count()).select_from(Servidor)) or 0
+    paginas = max(1, math.ceil(total / por_pagina)) if total > 0 else 1
+    offset  = (pagina - 1) * por_pagina
+
+    resultado = await sesion.execute(
+        select(Servidor).order_by(Servidor.hostname).offset(offset).limit(por_pagina)
+    )
+    return {
+        "total":     total,
+        "pagina":    pagina,
+        "por_pagina": por_pagina,
+        "paginas":   paginas,
+        "servidores": list(resultado.scalars().all()),
+    }
 
 
 async def obtener_servidor(server_id: str, sesion: AsyncSession):
@@ -73,21 +89,29 @@ async def eliminar_servidor(server_id: str, sesion: AsyncSession) -> dict:
 
 @router.get("/api/admin/servidores")
 async def ruta_listar(
+    pagina:     int = Query(default=1, ge=1, description="Número de página (desde 1)"),
+    por_pagina: int = Query(default=_POR_PAGINA_DEFECTO, ge=1, le=_POR_PAGINA_MAX, description="Resultados por página"),
     _=Depends(validar_api_key),
     sesion: AsyncSession = Depends(obtener_sesion),
 ):
-    servidores = await listar_servidores(sesion)
-    return JSONResponse([
-        {
-            "server_id":    sv.server_id,
-            "hostname":     sv.hostname,
-            "ip":           sv.ip_registrada,
-            "estado":       sv.estado,
-            "ultimo_visto": sv.ultimo_visto.isoformat() if sv.ultimo_visto else None,
-            "registrado_en": sv.registrado_en.isoformat(),
-        }
-        for sv in servidores
-    ])
+    resultado = await listar_servidores(sesion, pagina, por_pagina)
+    return JSONResponse({
+        "total":     resultado["total"],
+        "pagina":    resultado["pagina"],
+        "por_pagina": resultado["por_pagina"],
+        "paginas":   resultado["paginas"],
+        "servidores": [
+            {
+                "server_id":     sv.server_id,
+                "hostname":      sv.hostname,
+                "ip":            sv.ip_registrada,
+                "estado":        sv.estado,
+                "ultimo_visto":  sv.ultimo_visto.isoformat() if sv.ultimo_visto else None,
+                "registrado_en": sv.registrado_en.isoformat(),
+            }
+            for sv in resultado["servidores"]
+        ],
+    })
 
 
 @router.post("/api/admin/servidores", status_code=201)

@@ -68,10 +68,13 @@ class ServidorController extends Controller
 
     // ── endpoints HTTP ────────────────────────────────────────────────────────
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $pagina    = max(1, (int) $request->query('pagina', 1));
+        $porPagina = min(200, max(1, (int) $request->query('por_pagina', 25)));
+
         try {
-            $resultado = $this->api->listarServidores();
+            $resultado = $this->api->listarServidores($pagina, $porPagina);
         } catch (\Exception) {
             return response()->json(['error' => 'no se pudo conectar con la API'], 503);
         }

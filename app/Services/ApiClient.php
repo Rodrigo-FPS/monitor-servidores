@@ -20,9 +20,12 @@ class ApiClient
         return Http::withToken($this->apiKey)->acceptJson()->timeout(10);
     }
 
-    public function listarServidores(): array
+    public function listarServidores(int $pagina = 1, int $porPagina = 25): array
     {
-        $r = $this->http()->get("{$this->baseUrl}/api/admin/servidores");
+        $r = $this->http()->get("{$this->baseUrl}/api/admin/servidores", [
+            'pagina'     => max(1, $pagina),
+            'por_pagina' => min(200, max(1, $porPagina)),
+        ]);
         return ['status' => $r->status(), 'body' => $r->json() ?? []];
     }
 

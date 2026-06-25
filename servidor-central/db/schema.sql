@@ -15,3 +15,4 @@ CREATE TABLE IF NOT EXISTS servidores (
 
 CREATE INDEX IF NOT EXISTS idx_servidores_estado       ON servidores (estado);
 CREATE INDEX IF NOT EXISTS idx_servidores_ultimo_visto ON servidores (ultimo_visto);
+CREATE INDEX IF NOT EXISTS idx_servidores_hostname     ON servidores (hostname);
