@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+umask 077
 
 DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-5432}"
@@ -24,6 +25,8 @@ chmod 700 "$BACKUP_DIR"
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] iniciando respaldo de ${DB_DATABASE}..."
 
 #dump y compresion en un paso el archivo nunca toca el disco sin comprimir
+#si pg_dump falla el trap elimina el archivo parcial antes de salir
+trap 'rm -f "$ARCHIVO"' ERR
 pg_dump \
     --host="$DB_HOST" \
     --port="$DB_PORT" \
@@ -33,6 +36,7 @@ pg_dump \
     --format=plain \
     "$DB_DATABASE" \
   | gzip -9 > "$ARCHIVO"
+trap - ERR
 
 #verificar integridad antes de declarar exito
 if ! gunzip -t "$ARCHIVO" 2>/dev/null; then
