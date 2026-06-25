@@ -30,6 +30,19 @@ if [[ -z "$NUEVA_IP" ]]; then
     exit 1
 fi
 
+# Validar formato IPv4 estricto antes de usar el valor en sed y openssl
+if ! [[ "$NUEVA_IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    echo "ERROR: '$NUEVA_IP' no tiene formato IPv4 valido." >&2
+    exit 1
+fi
+IFS='.' read -r -a _octetos <<< "$NUEVA_IP"
+for _oct in "${_octetos[@]}"; do
+    if (( _oct > 255 )); then
+        echo "ERROR: octeto fuera de rango: $_oct" >&2
+        exit 1
+    fi
+done
+
 echo "Nueva IP: $NUEVA_IP"
 echo ""
 
@@ -46,6 +59,7 @@ chmod 644 /etc/ssl/monitor/fullchain.pem
 echo "    OK: /etc/ssl/monitor/{fullchain,privkey}.pem"
 
 # 2. Actualizar APP_URL en el .env de Laravel
+# Se usa / como delimitador de sed para evitar conflicto con la / de https://
 echo "[2/4] Actualizando APP_URL en /etc/monitor-laravel/.env..."
 sed -i "s|^APP_URL=.*|APP_URL=https://${NUEVA_IP}|" /etc/monitor-laravel/.env
 echo "    OK: APP_URL=https://${NUEVA_IP}"
