@@ -412,3 +412,53 @@ El campo `rol` no es asignable en masa y cualquier valor invalido se normaliza a
 - El agente cliente corre bajo el usuario sin privilegios `monitor-agent` con el servicio systemd confinado (`NoNewPrivileges`, `ProtectSystem=strict`, `MemoryDenyWriteExecute`).
 - Registro de eventos: FastAPI escribe en `/var/log/monitor/` (`seguridad.log` con los rechazos de latidos/apagados y fallos de API key; `estados.log` con los cambios de estado). Laravel escribe en `storage/logs/` (`auditoria.log` con login y altas/ediciones/borrados de servidores; `seguridad.log` con logins fallidos, bloqueos por fuerza bruta y deteccion de secuestro de sesion). El historial de estados queda en logs, no en la base de datos.
 - Endurecimiento de produccion: `/docs`, `/redoc` y `/openapi.json` deshabilitados; nginx con rate-limit en `/login` y limite de conexiones por IP; cabeceras que revelan versiones ocultas (`server_tokens off`, `--no-server-header`, `X-Powered-By`).
+
+## Respaldos
+
+Los scripts estan en `infra/backup/` y ya tienen permiso de ejecucion en el repositorio.
+
+### Estrategia
+
+- **Frecuencia**: diaria automatizada con cron (recomendado 02:00 hrs).
+- **Tipo**: volcado logico con `pg_dump` comprimido con `gzip -9` en un paso (sin archivo intermedio en disco).
+- **Retencion**: 30 dias por defecto, configurable con `RETENER_DIAS`.
+- **Verificacion**: cada respaldo se valida con `gunzip -t` antes de declararlo exitoso.
+- **Almacenamiento**: `/var/backups/monitor` con permisos 700.
+
+### Configurar cron automatico
+
+Editar el crontab de root en el servidor central (`sudo crontab -e`) y agregar:
+
+```
+# Respaldo diario de monitor_laravel a las 02:00
+0 2 * * * BACKUP_DB_PASS='contrasena_laravel_backup' bash /var/www/monitor/infra/backup/backup.sh >> /var/log/monitor/backup.log 2>&1
+
+# Respaldo diario de monitor_fastapi a las 02:05
+5 2 * * * DB_DATABASE=monitor_fastapi BACKUP_DB_USER=fastapi_backup BACKUP_DB_PASS='contrasena_fastapi_backup' bash /var/www/monitor/infra/backup/backup.sh >> /var/log/monitor/backup.log 2>&1
+```
+
+Sustituir `contrasena_laravel_backup` y `contrasena_fastapi_backup` por las contrasenas reales de los roles `laravel_backup` y `fastapi_backup` de PostgreSQL.
+
+### Uso manual
+
+```bash
+# Respaldar monitor_laravel (por defecto)
+sudo BACKUP_DB_PASS='...' bash /var/www/monitor/infra/backup/backup.sh
+
+# Respaldar monitor_fastapi
+sudo DB_DATABASE=monitor_fastapi BACKUP_DB_USER=fastapi_backup BACKUP_DB_PASS='...' bash /var/www/monitor/infra/backup/backup.sh
+```
+
+### Restauracion
+
+```bash
+sudo DBA_DB_PASS='...' bash /var/www/monitor/infra/backup/restore.sh /var/backups/monitor/monitor_2026-06-25_02-00-00.sql.gz
+```
+
+El script verifica la integridad del archivo y pide confirmacion explicita (`escribe CONFIRMAR para continuar`) antes de sobrescribir la base de datos.
+
+Para restaurar `monitor_fastapi` en lugar de `monitor_laravel`:
+
+```bash
+sudo DB_DATABASE=monitor_fastapi DBA_DB_USER=fastapi_dba DBA_DB_PASS='...' bash /var/www/monitor/infra/backup/restore.sh /var/backups/monitor/monitor_2026-06-25_02-05-00.sql.gz
+```
