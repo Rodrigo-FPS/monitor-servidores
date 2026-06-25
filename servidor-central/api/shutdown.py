@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from db.database import obtener_sesion
 from db.models import Servidor
 from api.heartbeat import validar_peticion_ed25519
+from logs import logger_estados
 
 router = APIRouter()
 
@@ -13,6 +14,11 @@ _RESPUESTA_OK = {"status": "ok"}
 
 
 async def registrar_apagado(servidor: Servidor, sesion: AsyncSession):
+    if servidor.estado != "apagado":
+        logger_estados.info(
+            "cambio_estado server_id=%s anterior=%s nuevo=apagado",
+            servidor.server_id, servidor.estado,
+        )
     servidor.ultimo_visto        = datetime.now(timezone.utc)
     servidor.estado              = "apagado"
     servidor.ultimo_tipo_mensaje = "shutdown"

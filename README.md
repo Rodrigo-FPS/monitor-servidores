@@ -59,8 +59,11 @@ cd /var/www/monitor
 
 ```bash
 composer install --no-dev --optimize-autoloader
-php artisan key:generate
 ```
+
+> La clave de la aplicacion (`APP_KEY`) se genera mas abajo, una vez creado el
+> `.env` (paso 3). En `APP_ENV=production`, `php artisan key:generate` pide
+> confirmacion: usa `--force` para que no se cancele.
 
 ### 3. Crear el .env de Laravel fuera del webroot
 
@@ -73,10 +76,15 @@ sudo chmod 750 /etc/monitor-laravel
 sudo chown root:www-data /etc/monitor-laravel
 ```
 
-Editar `/etc/monitor-laravel/.env` con los valores del entorno:
+Generar la `APP_KEY` (escribe directamente en `/etc/monitor-laravel/.env`):
+
+```bash
+sudo -u www-data php artisan key:generate --force
+```
+
+Editar el resto de `/etc/monitor-laravel/.env` con los valores del entorno:
 
 ```env
-APP_KEY=           # se genera con: php artisan key:generate --show
 APP_URL=https://tu-dominio.com
 
 DB_CONNECTION=pgsql

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from db.database import obtener_sesion
 from db.models import Servidor
 from auth.firma_validator import validar_firma_ed25519, validar_timestamp
-from logs import logger_seguridad
+from logs import logger_seguridad, logger_estados
 
 router = APIRouter()
 
@@ -92,6 +92,12 @@ async def validar_peticion_ed25519(request: Request, sesion: AsyncSession):
 
 
 async def registrar_latido(servidor: Servidor, sesion: AsyncSession):
+    #Registrar solo la transicion (no cada latido) para llevar el historial en el log.
+    if servidor.estado != "encendido":
+        logger_estados.info(
+            "cambio_estado server_id=%s anterior=%s nuevo=encendido",
+            servidor.server_id, servidor.estado,
+        )
     servidor.ultimo_visto         = datetime.now(timezone.utc)
     servidor.estado               = "encendido"
     servidor.ultimo_tipo_mensaje  = "heartbeat"
