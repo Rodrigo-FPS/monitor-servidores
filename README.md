@@ -359,21 +359,26 @@ entorno y registra el servicio systemd.
 
 ### Configurar el agente
 
+Editar `/etc/monitor-agent/config.env` con los datos de este servidor:
+
 ```bash
 sudo nano /etc/monitor-agent/config.env
 ```
 
 ```env
 SERVER_ID=nombre-unico-del-servidor
-SERVER_URL=https://tu-dominio.com
+SERVER_URL=https://ip-del-servidor-central
 INTERVALO_SEGUNDOS=30
+VERIFICAR_SSL=0
 ```
 
-`SERVER_ID` debe ser unico en todo el sistema y usar solo letras, numeros, guiones y guion bajo.
+`SERVER_ID` debe ser unico en todo el sistema y usar solo letras, numeros,
+guiones y guion bajo. `VERIFICAR_SSL=0` es necesario cuando el servidor
+central usa un certificado autofirmado (red local / laboratorio).
 
 ### Generar las claves Ed25519 y registrar el servidor
 
-Arrancar el agente una sola vez para que genere el par de claves:
+Arrancar el agente por primera vez para que genere el par de claves Ed25519:
 
 ```bash
 sudo systemctl start monitor-agent
@@ -385,9 +390,18 @@ Leer la clave publica generada:
 sudo cat /etc/monitor-agent/public.key
 ```
 
-Entrar al panel web, ir a **Agregar Servidor** e introducir el `SERVER_ID`, hostname, IP y la clave publica completa incluyendo las lineas `-----BEGIN PUBLIC KEY-----` y `-----END PUBLIC KEY-----`.
+Entrar al panel web, ir a **Agregar Servidor** e introducir el `SERVER_ID`,
+hostname, IP y la clave publica completa incluyendo las lineas
+`-----BEGIN PUBLIC KEY-----` y `-----END PUBLIC KEY-----`.
 
-Una vez registrado el servidor, el agente comenzara a enviar latidos. Verificar:
+Una vez registrado el servidor, habilitar el servicio para que arranque
+automaticamente con el sistema:
+
+```bash
+sudo systemctl enable monitor-agent
+```
+
+Verificar que los latidos llegan correctamente:
 
 ```bash
 sudo journalctl -u monitor-agent -f

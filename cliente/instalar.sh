@@ -49,7 +49,8 @@ fi
 
 cp "$DIR/monitor-agent.service" /etc/systemd/system/monitor-agent.service
 systemctl daemon-reload
-echo "[OK] servicio systemd registrado"
+systemctl enable monitor-agent
+echo "[OK] servicio systemd registrado y habilitado"
 
 echo ""
 echo "=== instalacion completada ==="
