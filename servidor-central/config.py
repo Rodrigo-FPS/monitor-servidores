@@ -6,12 +6,6 @@ load_dotenv()
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DATABASE_URL = os.getenv("DATABASE_URL", "")
-if not DATABASE_URL:
-    raise RuntimeError(
-        "DATABASE_URL no configurada — define la variable en .env"
-    )
-
 def _leer_credencial(nombre: str) -> str:
     """Lee un secreto desde $CREDENTIALS_DIRECTORY (systemd LoadCredential).
     Si el directorio no esta disponible, devuelve cadena vacia."""
@@ -21,6 +15,13 @@ def _leer_credencial(nombre: str) -> str:
         if ruta.exists():
             return ruta.read_text().strip()
     return ""
+
+DATABASE_URL = _leer_credencial("database_url") or os.getenv("DATABASE_URL", "")
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL no configurada — usa systemd LoadCredential "
+        "o define la variable en .env"
+    )
 
 ADMIN_API_KEY = _leer_credencial("admin_api_key") or os.getenv("ADMIN_API_KEY", "")
 if not ADMIN_API_KEY:

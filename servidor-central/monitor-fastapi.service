@@ -15,9 +15,10 @@ WorkingDirectory=/var/www/monitor/servidor-central
 # --no-server-header evita revelar "Server: uvicorn".
 ExecStart=/var/www/monitor/servidor-central/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --no-server-header
 
-# ADMIN_API_KEY se lee de /etc/monitor-api/admin_api_key via CREDENTIALS_DIRECTORY
-# El archivo debe tener permisos 600 y ser propiedad de root
+# Las credenciales se inyectan via CREDENTIALS_DIRECTORY — ningun secreto en .env
+# Ambos archivos deben tener permisos 600, propiedad de root:root
 LoadCredential=admin_api_key:/etc/monitor-api/admin_api_key
+LoadCredential=database_url:/etc/monitor-api/database_url
 
 # Directorio de logs: systemd crea /var/log/monitor (propiedad del usuario del
 # servicio) y exporta $LOGS_DIRECTORY. Compatible con ProtectSystem=strict.

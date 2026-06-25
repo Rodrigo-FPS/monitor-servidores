@@ -181,11 +181,11 @@ pip install -r requirements.txt
 cp servidor-central/.env.example servidor-central/.env
 ```
 
-Editar `servidor-central/.env`. `ADMIN_API_KEY` se gestiona via systemd, pero
-`DATABASE_URL` es obligatoria (la app no arranca sin ella):
+El `.env` de FastAPI solo contiene configuracion, no credenciales. Editar
+`servidor-central/.env` con los valores de temporizado (las credenciales van
+en el paso siguiente via systemd):
 
 ```env
-DATABASE_URL=postgresql+asyncpg://fastapi_app:password-seguro@127.0.0.1:5432/monitor_fastapi?ssl=disable
 HEARTBEAT_INTERVALO_SEGUNDOS=30
 HEARTBEAT_TIMEOUT_SEGUNDOS=90
 VENTANA_ANTIREPLAY_SEGUNDOS=60
@@ -205,16 +205,29 @@ Los roles de FastAPI (`fastapi_app`, etc.) y los de Laravel (`laravel_app`, etc.
 tienen nombres distintos, por lo que ambos servicios pueden compartir el mismo
 PostgreSQL sin conflicto.
 
-### 8. Crear la credencial de API del FastAPI
+### 8. Crear las credenciales de FastAPI
 
-Generar una clave aleatoria y guardarla como credencial de systemd:
+Ambas credenciales se inyectan via `LoadCredential` — ningun secreto toca el `.env`:
 
 ```bash
-python3 -c "import secrets; print(secrets.token_urlsafe(64))" | sudo tee /etc/monitor-api/admin_api_key
-sudo chmod 600 /etc/monitor-api/admin_api_key
-sudo chown root:root /etc/monitor-api/admin_api_key
+sudo mkdir -p /etc/monitor-api
 sudo chmod 700 /etc/monitor-api
+
+# DATABASE_URL — ?ssl=disable es obligatorio con ProtectHome=true (asyncpg
+# intenta leer ~/.postgresql/ y systemd bloquea el home del usuario del servicio)
+echo -n "postgresql+asyncpg://fastapi_app:PASSWORD@127.0.0.1:5432/monitor_fastapi?ssl=disable" \
+  | sudo tee /etc/monitor-api/database_url > /dev/null
+
+# ADMIN_API_KEY — clave aleatoria de 64 bytes en base64url
+python3 -c "import secrets; print(secrets.token_urlsafe(64), end='')" \
+  | sudo tee /etc/monitor-api/admin_api_key > /dev/null
+
+sudo chmod 600 /etc/monitor-api/admin_api_key /etc/monitor-api/database_url
+sudo chown root:root /etc/monitor-api/admin_api_key /etc/monitor-api/database_url
 ```
+
+Sustituir `PASSWORD` por la contrasena real del rol `fastapi_app` de PostgreSQL.
+Copiar el valor de `admin_api_key` en `FASTAPI_KEY` dentro de `/etc/monitor-laravel/.env`.
 
 Copiar el mismo valor en `FASTAPI_KEY` dentro de `/etc/monitor-laravel/.env`.
 
@@ -406,7 +419,7 @@ El campo `rol` no es asignable en masa y cualquier valor invalido se normaliza a
 ## Seguridad
 
 - Las sesiones de Laravel se cifran (`SESSION_ENCRYPT=true`) y el `.env` se almacena fuera del webroot en `/etc/monitor-laravel/` con permisos 600.
-- `ADMIN_API_KEY` del FastAPI no existe en ningun archivo `.env` en disco; se inyecta en tiempo de ejecucion via `systemd LoadCredential` desde `/etc/monitor-api/admin_api_key` (root:root, 600).
+- `ADMIN_API_KEY` y `DATABASE_URL` del FastAPI no existen en ningun archivo `.env` en disco; se inyectan en tiempo de ejecucion via `systemd LoadCredential` desde `/etc/monitor-api/` (directorio 700, archivos root:root 600). El `.env` de FastAPI solo contiene configuracion de temporizado, sin ningun secreto.
 - La CSP del panel web bloquea recursos externos (`script-src 'self'`). Bootstrap, jQuery y Font Awesome se sirven localmente desde `/public/`.
 - El login tiene proteccion contra fuerza bruta: bloqueo temporal tras `LOGIN_MAX_INTENTOS` intentos fallidos en `LOGIN_VENTANA_MINUTOS` minutos.
 - El agente cliente corre bajo el usuario sin privilegios `monitor-agent` con el servicio systemd confinado (`NoNewPrivileges`, `ProtectSystem=strict`, `MemoryDenyWriteExecute`).
