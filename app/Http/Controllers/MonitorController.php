@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Services\ApiClient;
 use Illuminate\Support\Facades\Log;
 
@@ -25,18 +24,6 @@ class MonitorController extends Controller
         $servers = $this->getServersFromFastAPI();
 
         return view('monitor.index', compact('servers'));
-    }
-
-    /**
-     * Devuelve solo la tabla de servidores para AJAX.
-     *
-     * @return \Illuminate\View\View|string
-     */
-    public function getData()
-    {
-        $servers = $this->getServersFromFastAPI();
-
-        return view('monitor._servers_table', compact('servers'))->render();
     }
 
     /**
