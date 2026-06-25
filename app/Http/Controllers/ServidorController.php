@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Services\ApiClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ServidorController extends Controller
 {
@@ -16,6 +18,21 @@ class ServidorController extends Controller
     public function __construct(ApiClient $api)
     {
         $this->api = $api;
+    }
+
+    /** Registra una accion del administrador en el canal de auditoria. */
+    private function auditar(string $accion, array $datos, Request $request): void
+    {
+        Log::channel('auditoria')->info($accion, array_merge($datos, [
+            'admin' => Auth::guard('admin')->user()?->username,
+            'ip'    => $request->ip(),
+        ]));
+    }
+
+    /** Indica si la respuesta de la API representa exito (2xx). */
+    private function exito(int $status): bool
+    {
+        return $status >= 200 && $status < 300;
     }
 
     // ── validadores de campo ──────────────────────────────────────────────────
@@ -88,6 +105,14 @@ class ServidorController extends Controller
             return response()->json(['error' => 'no se pudo conectar con la API'], 503);
         }
 
+        if ($this->exito($resultado['status'])) {
+            $this->auditar('servidor_creado', [
+                'server_id' => $serverId,
+                'hostname'  => $hostname,
+                'ip_nueva'  => $ip,
+            ], $request);
+        }
+
         return response()->json($resultado['body'], $resultado['status']);
     }
 
@@ -117,10 +142,17 @@ class ServidorController extends Controller
             return response()->json(['error' => 'no se pudo conectar con la API'], 503);
         }
 
+        if ($this->exito($resultado['status'])) {
+            $this->auditar('servidor_actualizado', [
+                'server_id' => $serverId,
+                'ip_nueva'  => $ip,
+            ], $request);
+        }
+
         return response()->json($resultado['body'], $resultado['status']);
     }
 
-    public function destroy(string $serverId): JsonResponse
+    public function destroy(Request $request, string $serverId): JsonResponse
     {
         $serverId = trim($serverId);
 
@@ -132,6 +164,12 @@ class ServidorController extends Controller
             $resultado = $this->api->eliminarServidor($serverId);
         } catch (\Exception) {
             return response()->json(['error' => 'no se pudo conectar con la API'], 503);
+        }
+
+        if ($this->exito($resultado['status'])) {
+            $this->auditar('servidor_eliminado', [
+                'server_id' => $serverId,
+            ], $request);
         }
 
         return response()->json($resultado['body'], $resultado['status']);

@@ -6,6 +6,7 @@ use App\Http\Requests\LoginAdminRequest;
 use App\Models\IntentoLoginFallido;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class LoginController extends Controller
@@ -28,6 +29,10 @@ class LoginController extends Controller
             ->count();
 
         if ($intentos >= $maxIntentos) {
+            Log::channel('seguridad')->warning('login_bloqueado_fuerza_bruta', [
+                'ip'       => $ip,
+                'username' => $request->username,
+            ]);
             // no dar pistas de si el usuario existe o no, bloquear por IP temporalmente
             return back()->withErrors([
                 'auth' => 'Múltiples intentos fallidos detectados. Por seguridad, su IP ha sido bloqueada temporalmente.'
@@ -39,18 +44,28 @@ class LoginController extends Controller
         if (Auth::guard('admin')->attempt($credenciales)) {
             // Prevención de session fixation: Generar un nuevo ID de sesion seguro
             $request->session()->regenerate();
-            
+
             // Pinning de sesionn: Guardar huella digital para el middleware anti-hijacking
             $request->session()->put('vinculo_ip', $request->ip());
             $request->session()->put('vinculo_ua', $request->userAgent());
+
+            Log::channel('auditoria')->info('login_exitoso', [
+                'username' => $request->username,
+                'ip'       => $ip,
+            ]);
 
             return redirect()->intended('/admin');
         }
 
         // Registrar el fallo
         IntentoLoginFallido::create([
-            'ip' => $ip, 
+            'ip' => $ip,
             'username' => $request->username
+        ]);
+
+        Log::channel('seguridad')->info('login_fallido', [
+            'ip'       => $ip,
+            'username' => $request->username,
         ]);
 
         return back()->withErrors([

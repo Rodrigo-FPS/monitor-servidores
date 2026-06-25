@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class VerificarSesionEstricta
@@ -17,10 +18,17 @@ class VerificarSesionEstricta
 
             // Si la IP o el User agent cambian durante una sesion activa, esta se intercepta y destruye
             if ($sesionIp !== $request->ip() || $sesionUa !== $request->userAgent()) {
+                Log::channel('seguridad')->warning('posible_secuestro_sesion', [
+                    'admin'     => Auth::guard('admin')->user()?->username,
+                    'ip_sesion' => $sesionIp,
+                    'ip_actual' => $request->ip(),
+                    'ua_cambio' => $sesionUa !== $request->userAgent(),
+                ]);
+
                 Auth::guard('admin')->logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
-                
+
                 abort(403, 'Alerta de seguridad: Posible secuestro de sesion o intento. Sesion terminada.');
             }
         }

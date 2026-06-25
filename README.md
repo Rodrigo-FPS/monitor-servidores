@@ -131,7 +131,6 @@ Editar `servidor-central/.env`. En produccion solo necesita las variables no sen
 HEARTBEAT_INTERVALO_SEGUNDOS=30
 HEARTBEAT_TIMEOUT_SEGUNDOS=90
 VENTANA_ANTIREPLAY_SEGUNDOS=60
-AMBIENTE=produccion
 ```
 
 ### 7. Crear la credencial de API del FastAPI
@@ -286,3 +285,5 @@ La clave privada nunca se transmite ni se almacena fuera del servidor cliente.
 - La CSP del panel web bloquea recursos externos (`script-src 'self'`). Bootstrap, jQuery y Font Awesome se sirven localmente desde `/public/`.
 - El login tiene proteccion contra fuerza bruta: bloqueo temporal tras `LOGIN_MAX_INTENTOS` intentos fallidos en `LOGIN_VENTANA_MINUTOS` minutos.
 - El agente cliente corre bajo el usuario sin privilegios `monitor-agent` con el servicio systemd confinado (`NoNewPrivileges`, `ProtectSystem=strict`, `MemoryDenyWriteExecute`).
+- Registro de eventos: FastAPI escribe en `/var/log/monitor/` (`seguridad.log` con los rechazos de latidos/apagados y fallos de API key; `estados.log` con los cambios de estado). Laravel escribe en `storage/logs/` (`auditoria.log` con login y altas/ediciones/borrados de servidores; `seguridad.log` con logins fallidos, bloqueos por fuerza bruta y deteccion de secuestro de sesion). El historial de estados queda en logs, no en la base de datos.
+- Endurecimiento de produccion: `/docs`, `/redoc` y `/openapi.json` deshabilitados; nginx con rate-limit en `/login` y limite de conexiones por IP; cabeceras que revelan versiones ocultas (`server_tokens off`, `--no-server-header`, `X-Powered-By`).

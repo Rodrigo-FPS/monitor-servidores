@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from db.database import obtener_sesion
 from db.models import Servidor
 from auth.firma_validator import validar_firma_ed25519, validar_timestamp
+from logs import logger_seguridad
 
 router = APIRouter()
 
@@ -46,32 +47,46 @@ async def _buscar_servidor(server_id: str, sesion: AsyncSession):
     return resultado.scalar_one_or_none()
 
 
+def _rechazar(request: Request, server_id: str, motivo: str):
+    #Registro de seguridad del rechazo. El rate-limit de nginx (zona heartbeat)
+    #acota la frecuencia, evitando que este log sea un vector de DoS. No se
+    #registran secretos (ni la firma ni la clave).
+    logger_seguridad.warning(
+        "rechazo path=%s ip=%s server_id=%s motivo=%s",
+        request.url.path,
+        _obtener_ip_cliente(request),
+        (server_id or "-")[:64],
+        motivo,
+    )
+    return None, False
+
+
 async def validar_peticion_ed25519(request: Request, sesion: AsyncSession):
     server_id, timestamp_iso, autorizacion = _extraer_headers(request)
 
     if not server_id or not timestamp_iso or not autorizacion:
-        return None, False
+        return _rechazar(request, server_id, "headers_incompletos")
 
     firma = _extraer_firma(autorizacion)
     if firma is None:
-        return None, False
+        return _rechazar(request, server_id, "autorizacion_malformada")
 
     #Ed25519: firma base64 de 64 bytes = 88 chars; server_id max 64; timestamp max 35
     if len(server_id) > 64 or len(timestamp_iso) > 35 or len(firma) > 100:
-        return None, False
+        return _rechazar(request, server_id, "longitud_invalida")
 
     servidor = await _buscar_servidor(server_id, sesion)
     if servidor is None:
-        return None, False
+        return _rechazar(request, server_id, "servidor_no_registrado")
 
     if _obtener_ip_cliente(request) != servidor.ip_registrada:
-        return None, False
+        return _rechazar(request, server_id, "ip_no_coincide")
 
     if not validar_timestamp(timestamp_iso):
-        return None, False
+        return _rechazar(request, server_id, "timestamp_fuera_de_ventana")
 
     if not validar_firma_ed25519(servidor.clave_publica, server_id, timestamp_iso, firma):
-        return None, False
+        return _rechazar(request, server_id, "firma_invalida")
 
     return servidor, True
 

@@ -12,11 +12,17 @@ User=monitor-api
 Group=monitor-api
 WorkingDirectory=/var/www/monitor/servidor-central
 # Enlazar SOLO a loopback: el backend es interno, se accede via nginx.
-ExecStart=/var/www/monitor/servidor-central/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+# --no-server-header evita revelar "Server: uvicorn".
+ExecStart=/var/www/monitor/servidor-central/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --no-server-header
 
 # ADMIN_API_KEY se lee de /etc/monitor-api/admin_api_key via CREDENTIALS_DIRECTORY
 # El archivo debe tener permisos 600 y ser propiedad de root
 LoadCredential=admin_api_key:/etc/monitor-api/admin_api_key
+
+# Directorio de logs: systemd crea /var/log/monitor (propiedad del usuario del
+# servicio) y exporta $LOGS_DIRECTORY. Compatible con ProtectSystem=strict.
+LogsDirectory=monitor
+LogsDirectoryMode=0750
 
 Restart=on-failure
 RestartSec=5

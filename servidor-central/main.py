@@ -5,13 +5,14 @@ from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI
 from sqlalchemy import select
 
-from config import HEARTBEAT_INTERVALO_SEGUNDOS, HEARTBEAT_TIMEOUT_SEGUNDOS, AMBIENTE
-from db.database import inicializar_base_datos, FabricaSesion
+from config import HEARTBEAT_INTERVALO_SEGUNDOS, HEARTBEAT_TIMEOUT_SEGUNDOS
+from db.database import FabricaSesion
 from db.models import Servidor
 from api.heartbeat import router as router_heartbeat
 from api.shutdown import router as router_shutdown
 from api.servidores import router as router_servidores
 from middleware.security_headers import MiddlewareSeguridad
+from logs import logger_estados
 
 
 async def actualizar_estados_servidores():
@@ -22,15 +23,27 @@ async def actualizar_estados_servidores():
         servidores = resultado.scalars().all()
 
         for servidor in servidores:
+            estado_anterior = servidor.estado
+
             if servidor.ultimo_tipo_mensaje == "shutdown":
-                servidor.estado = "apagado"
+                nuevo_estado = "apagado"
             elif servidor.ultimo_visto is None:
-                servidor.estado = "indeterminado"
+                nuevo_estado = "indeterminado"
             else:
                 ultimo = servidor.ultimo_visto
                 if ultimo.tzinfo is None:
                     ultimo = ultimo.replace(tzinfo=timezone.utc)
-                servidor.estado = "encendido" if ultimo >= limite else "indeterminado"
+                nuevo_estado = "encendido" if ultimo >= limite else "indeterminado"
+
+            servidor.estado = nuevo_estado
+
+            #Se registra solo la TRANSICION de estado (no cada latido) para que el
+            #historial quede en el log y la BD conserve unicamente el estado actual.
+            if nuevo_estado != estado_anterior:
+                logger_estados.info(
+                    "cambio_estado server_id=%s anterior=%s nuevo=%s",
+                    servidor.server_id, estado_anterior, nuevo_estado,
+                )
 
             sesion.add(servidor)
 
@@ -42,17 +55,14 @@ async def job_estados():
         try:
             await actualizar_estados_servidores()
         except Exception as error:
-            print(f"[ERROR] job de estados: {error}")
+            logger_estados.error("job de estados fallo: %s", error)
         await asyncio.sleep(HEARTBEAT_INTERVALO_SEGUNDOS)
 
 
 @asynccontextmanager
 async def ciclo_de_vida(app: FastAPI):
-    #En produccion el esquema se crea con db/schema.sql usando el rol DBA; el rol de
-    #runtime (monitor_app) sigue el principio de minimos privilegios y NO tiene CREATE.
-    #create_all solo se usa fuera de produccion para facilitar el desarrollo.
-    if AMBIENTE != "produccion":
-        await inicializar_base_datos()
+    #El esquema se crea con db/schema.sql usando el rol DBA (minimos privilegios).
+    #La app NO crea tablas en runtime (monitor_app no tiene privilegio CREATE).
     tarea = asyncio.create_task(job_estados())
     yield
     tarea.cancel()
@@ -65,8 +75,9 @@ async def ciclo_de_vida(app: FastAPI):
 app = FastAPI(
     title="Monitor de Servidores API",
     lifespan=ciclo_de_vida,
-    docs_url=None if AMBIENTE == "produccion" else "/docs",
-    redoc_url=None,
+    docs_url=None,     #Swagger UI deshabilitado siempre
+    redoc_url=None,    #ReDoc deshabilitado siempre
+    openapi_url=None,  #no exponer el esquema de la API (/openapi.json)
 )
 
 app.add_middleware(MiddlewareSeguridad)
