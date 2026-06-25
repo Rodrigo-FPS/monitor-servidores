@@ -291,15 +291,50 @@ sudo systemctl status monitor-fastapi
 
 ### 10. Configurar nginx
 
-Copiar y adaptar la plantilla incluida:
+#### Certificado SSL
+
+El sistema necesita HTTPS. La opcion depende del entorno:
+
+**Opcion A — Red local / laboratorio (sin dominio, solo IP)**
+
+Generar un certificado autofirmado para la IP del servidor. El navegador mostrara
+una advertencia la primera vez; se acepta una sola vez y no vuelve a aparecer:
+
+```bash
+sudo mkdir -p /etc/ssl/monitor
+sudo openssl req -x509 -nodes -newkey rsa:4096 -days 365 \
+    -keyout /etc/ssl/monitor/privkey.pem \
+    -out    /etc/ssl/monitor/fullchain.pem \
+    -subj   "/CN=192.168.10.15/O=Monitor/C=MX" \
+    -addext "subjectAltName=IP:192.168.10.15"
+sudo chmod 600 /etc/ssl/monitor/privkey.pem
+sudo chmod 644 /etc/ssl/monitor/fullchain.pem
+```
+
+Sustituir `192.168.10.15` por la IP real del servidor en ambas ocurrencias.
+
+**Opcion B — Con dominio publico**
+
+Obtener un certificado con Certbot (Let's Encrypt):
+
+```bash
+sudo apt-get install -y certbot python3-certbot-nginx
+sudo certbot certonly --nginx -d tu-dominio.com
+```
+
+En la plantilla nginx (`infra/nginx/monitor.conf`) descomenta las lineas de
+`/etc/letsencrypt/live/...` y comenta las de `/etc/ssl/monitor/...`.
+
+#### Instalar la configuracion de nginx
+
+Editar `infra/nginx/monitor.conf` y reemplazar `TU_IP_O_DOMINIO` por la IP o
+el nombre de dominio real. Luego:
 
 ```bash
 sudo cp infra/nginx/monitor.conf /etc/nginx/sites-available/monitor
 sudo ln -s /etc/nginx/sites-available/monitor /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
-
-Editar el archivo para reemplazar `TU_DOMINIO` y las rutas de certificado SSL.
 
 ---
 
