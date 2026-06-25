@@ -71,11 +71,30 @@ git clone https://github.com/Rodrigo-FPS/monitor-servidores.git /var/www/monitor
 cd /var/www/monitor
 ```
 
-### 3. Instalar dependencias de Laravel
+### 3. Instalar dependencias de Laravel y ajustar permisos
+
+Los pasos 2 y 3 se ejecutan como **root** (o con `sudo`) porque el destino es
+`/var/www/`, que pertenece a root. `composer install` crea `vendor/` bajo el mismo
+usuario que lo ejecuta, que en este caso sera root:
 
 ```bash
 composer install --no-dev --optimize-autoloader
 ```
+
+`vendor/` queda con permisos `755 root:root`. PHP-FPM corre como `www-data` y puede
+leer esos archivos porque los permisos de "otros" incluyen lectura y ejecucion.
+
+Lo que `www-data` **necesita escribir** son `storage/` y `bootstrap/cache/`
+(logs, sesiones, cache de rutas). Cederles solo esos dos directorios:
+
+```bash
+sudo chown -R www-data:www-data /var/www/monitor/storage \
+                                 /var/www/monitor/bootstrap/cache
+```
+
+El resto del repo (`app/`, `vendor/`, `routes/`, etc.) permanece con `root:root 755`:
+www-data puede leerlo pero no modificarlo, lo que limita el impacto si PHP-FPM
+queda comprometido.
 
 > La clave de la aplicacion (`APP_KEY`) se genera mas abajo, una vez creado el
 > `.env` (paso 4). En `APP_ENV=production`, `php artisan key:generate` pide
