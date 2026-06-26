@@ -507,31 +507,6 @@ El campo `rol` no es asignable en masa y cualquier valor invalido se normaliza a
 
 ---
 
-## Seguridad
-
-- Las sesiones de Laravel se cifran (`SESSION_ENCRYPT=true`) y el `.env` se almacena fuera del webroot en `/etc/monitor-laravel/` con permisos 600.
-- `ADMIN_API_KEY` y `DATABASE_URL` del FastAPI no existen en ningun archivo `.env` en disco; se inyectan en tiempo de ejecucion via `systemd LoadCredential` desde `/etc/monitor-api/` (directorio 700, archivos root:root 600). El `.env` de FastAPI solo contiene configuracion de temporizado, sin ningun secreto.
-- La CSP del panel web bloquea recursos externos (`script-src 'self'`). Bootstrap, jQuery y Font Awesome se sirven localmente desde `/public/`.
-- El login tiene proteccion contra fuerza bruta: bloqueo temporal tras `LOGIN_MAX_INTENTOS` intentos fallidos en `LOGIN_VENTANA_MINUTOS` minutos.
-- El agente cliente corre bajo el usuario sin privilegios `monitor-agent` con el servicio systemd confinado (`NoNewPrivileges`, `ProtectSystem=strict`, `MemoryDenyWriteExecute`).
-- Registro de eventos: FastAPI escribe en `/var/log/monitor/` (`seguridad.log` con los rechazos de latidos/apagados y fallos de API key; `estados.log` con los cambios de estado). Laravel escribe en `storage/logs/` (`auditoria.log` con login y altas/ediciones/borrados de servidores; `seguridad.log` con logins fallidos, bloqueos por fuerza bruta y deteccion de secuestro de sesion). El historial de estados queda en logs, no en la base de datos.
-- Las contrasenas de los roles de backup y restauracion de PostgreSQL se almacenan en `/root/.pgpass` (600 root:root). `pg_dump` y `psql` las leen directamente desde ese archivo: nunca aparecen en variables de entorno del proceso, en el crontab ni en argumentos de linea de comandos.
-- Endurecimiento de produccion: `/docs`, `/redoc` y `/openapi.json` deshabilitados; nginx con rate-limit en `/login` y limite de conexiones por IP; cabeceras que revelan versiones ocultas (`server_tokens off`, `--no-server-header`, `X-Powered-By`).
-
-## Respaldos
-
-Los scripts estan en `infra/backup/` y ya tienen permiso de ejecucion en el repositorio.
-Las contrasenas nunca aparecen en variables de entorno del proceso ni en argumentos
-de linea de comandos: `pg_dump` y `psql` las leen directamente desde `/root/.pgpass`.
-
-### Estrategia
-
-- **Frecuencia**: diaria automatizada con cron (recomendado 02:00 hrs).
-- **Tipo**: volcado logico con `pg_dump` comprimido con `gzip -9` en un paso (sin archivo intermedio en disco).
-- **Retencion**: 30 dias por defecto, configurable con `RETENER_DIAS`.
-- **Verificacion**: cada respaldo se valida con `gunzip -t` antes de declararlo exitoso.
-- **Almacenamiento**: `/var/backups/monitor` con permisos 700.
-
 ### Crear el archivo de contrasenas de PostgreSQL
 
 Los cuatro roles de BD que usan los scripts (dos de respaldo, dos de restauracion) se
@@ -577,6 +552,8 @@ sudo bash /var/www/monitor/infra/backup/backup.sh
 # Respaldar monitor_fastapi
 sudo DB_DATABASE=monitor_fastapi BACKUP_DB_USER=fastapi_backup bash /var/www/monitor/infra/backup/backup.sh
 ```
+
+si piede contraseña usar las de usuario de respaldo de cada db
 
 ### Restauracion
 
